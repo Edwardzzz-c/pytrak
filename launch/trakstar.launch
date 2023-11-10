@@ -1,5 +1,5 @@
 <launch>
-  <arg name="publish_tf" default="false" />
+  <arg name="publish_tf" default="true" />
   <arg name="px" default="0.0" />
   <arg name="py" default="0.0" />
   <arg name="pz" default="0.0" />

@@ -28,7 +28,8 @@
 **********************************************************************/
 
 /** 
- * Author: Sean Seungkook Yun <seungkook.yun@sri.com> 
+ * Author: Sean Seungkook Yun <seungkook.yun@sri.com>
+ * Adapted for MyHand by: Ava Chen <ava.chen@columbia.edu> 
 */
 
 #include <string>
@@ -190,7 +191,7 @@ int main(int argc, char **argv)
 
     if(broadcaster)
     {
-      std::string frames[4] = {"trakstar_left", "trakstar_right", "trakstar_third", "trakstar_fourth"};
+      std::string frames[4] = {"trakstar0", "trakstar1", "trakstar2", "trakstar3"};
       for(int kk = 0; kk < num_sen; kk++)
       {
         transforms[kk].header.stamp = msg.header.stamp;
