@@ -4,10 +4,10 @@ trakstar_ros
 ros driver for trakstar magnetic tracker
 
 Instructions to run (11/10/2023, AEC):
-
+(make sure trakstar power is on and status light is a constant green)
 ```
 roscore
-roslaunch trakstar.launch (make sure trakstar power is on and status light is a constant green)
+roslaunch trakstar trakstar.launch
 ```
 
 you're done! Transforms should be published on topic /tf. Check rviz.
