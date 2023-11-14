@@ -1,13 +1,13 @@
 <package>
   <name>trakstar</name>
   <version>0.0.1</version>
-  <description>Unofficial driver and ROS node for Trakstar</description>
-  <maintainer email="seungkook.yun@gmail.com">Sean Seungkook Yun</maintainer>
+  <description>ROS driver for Trakstar. Originally forked from https://github.com/seanyun/trakstar_ros</description>
+  <maintainer email="ava.chen@columbia.edu">Ava Chen</maintainer>
 
   <license>BSD</license>
 
   
-  <author>Sean Seungkook Yun</author>
+  <author>Ava Chen</author>
 
   <buildtool_depend>catkin</buildtool_depend>
   

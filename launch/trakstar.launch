@@ -19,6 +19,8 @@
   <arg name="hemisphere_back" default="false" />
   <arg name="range_72inch" default="false" />
 
+  <arg name="time_now" default="$(eval eval ('_' + '_import_' + '_(\'datetime\')').datetime.now().strftime('%Y-%m-%d-%H%M%S'))"/>
+
   <node pkg="trakstar" type="trakstar_node" name="trakstar_driver" output="screen" >
     <param name="publish_tf"    type="bool"   value="$(arg publish_tf)" />
     <param name="pivot_x" type="double" value="$(arg px)" />
@@ -42,6 +44,10 @@
     <param name="frequency"  type="int" value="80" />
 
   </node>
+
+  <node pkg="rosbag" type="record" name="trakstar_bag" 
+        args="-o $(find trakstar)/collected_data/rosbag/trak.bag /tf" 
+    />
 
 </launch>
 

@@ -5,7 +5,7 @@ if(NOT CMAKE_CONFIGURATION_TYPES AND NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE Release)
 endif()
 
-find_package(catkin REQUIRED COMPONENTS geometry_msgs tf roscpp genmsg)
+find_package(catkin REQUIRED COMPONENTS geometry_msgs tf roscpp rospy genmsg)
 
 # include_directories(include ${Boost_INCLUDE_DIR} ${catkin_INCLUDE_DIRS})
 
@@ -45,7 +45,6 @@ install(DIRECTORY include/ DESTINATION include)
 install(DIRECTORY launch DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION})
 install(DIRECTORY config DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION})
 
-
 # Install udev rules
 option(INSTALL_TRAKSTAR_UDEV_RULES "Install udev rules for Trakstar" ON)
 IF (INSTALL_TRAKSTAR_UDEV_RULES)
@@ -58,4 +57,5 @@ else (INSTALL_TRAKSTAR_UDEV_RULES)
   message (STATUS "Udev rules for trakstar not being installed, install them with -DINSTALL_TRAKSTAR_UDEV_RULES=ON")
 endif (INSTALL_TRAKSTAR_UDEV_RULES)
 
+catkin_package()
 
