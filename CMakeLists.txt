@@ -29,6 +29,11 @@ catkin_package(
     LIBRARIES trakstar 
     CATKIN_DEPENDS geometry_msgs tf
 )
+
+catkin_install_python(PROGRAMS nodes/joint_node.py
+  DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+)
+
 include_directories(include 
                     ${catkin_INCLUDE_DIRS} 
                     )
