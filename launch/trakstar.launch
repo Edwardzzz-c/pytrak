@@ -49,8 +49,5 @@
         args="-o $(find trakstar)/collected_data/rosbag/trak.bag /tf" 
     />
 
-  <node pkg="trakstar" type="joint_node.py" 
-          name="joint_angle" />
-
 </launch>
 
