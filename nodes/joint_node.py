@@ -31,7 +31,6 @@ class JointAngle(object):
         return td.affines.compose(T, R, Z)
 
     def angle_calc(self):
-
         while not rospy.is_shutdown():
             try:
                 b_sensor0 = self.to_affine(self.tfBuffer.lookup_transform('trakstar_base', 'trakstar0', rospy.Time(0)))

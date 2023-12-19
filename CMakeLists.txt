@@ -30,7 +30,9 @@ catkin_package(
     CATKIN_DEPENDS geometry_msgs tf
 )
 
-catkin_install_python(PROGRAMS nodes/joint_node.py
+catkin_install_python(PROGRAMS 
+    nodes/joint_node.py
+    nodes/calibration_data_collection.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 
