@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 import rospy
 import tf2_ros
@@ -152,5 +152,5 @@ if __name__ == '__main__':
     file = open('calibration_poses', 'wb')
     cdc.record_neutral_angle_transforms(10, file)
     cdc.record_finger_sweeping_transforms(40, file)
-    cdc.record_data_transforms(1000, file)
+    cdc.record_data_transforms(100, file)
     file.close()
