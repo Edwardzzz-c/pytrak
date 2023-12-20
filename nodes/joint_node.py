@@ -15,12 +15,14 @@ class JointAngle(object):
         listener = tf2_ros.TransformListener(self.tfBuffer)
 
         # Publishing joint angle
-        self.joint_angle = rospy.Publisher('joint_angle', std_msgs.msg.Float32, queue_size = 1)
+        self.joint_angle = rospy.Publisher('joint_angle', std_msgs.msg.String, queue_size = 1)
 
         b_sensor0_i = self.to_affine(self.tfBuffer.lookup_transform('trakstar_base', 'trakstar0', rospy.Time(0), rospy.Duration(3.0)))
         b_sensor1_i = self.to_affine(self.tfBuffer.lookup_transform('trakstar_base', 'trakstar1', rospy.Time(0), rospy.Duration(3.0)))
-
-        self.s0_to_s1_i = np.dot(np.linalg.inv(b_sensor0_i), b_sensor1_i)
+        b_sensor2_i = self.to_affine(self.tfBuffer.lookup_transform('trakstar_base', 'trakstar2', rospy.Time(0), rospy.Duration(3.0)))
+        
+        self.s1_to_s0_i = np.dot(np.linalg.inv(b_sensor1_i), b_sensor0_i)
+        self.s2_to_s1_i = np.dot(np.linalg.inv(b_sensor2_i), b_sensor1_i)
 
     def to_affine(self, t):
         T = [t.transform.translation.x, t.transform.translation.y, t.transform.translation.z]
@@ -35,17 +37,22 @@ class JointAngle(object):
             try:
                 b_sensor0 = self.to_affine(self.tfBuffer.lookup_transform('trakstar_base', 'trakstar0', rospy.Time(0)))
                 b_sensor1 = self.to_affine(self.tfBuffer.lookup_transform('trakstar_base', 'trakstar1', rospy.Time(0)))
+                b_sensor2 = self.to_affine(self.tfBuffer.lookup_transform('trakstar_base', 'trakstar2', rospy.Time(0)))
 
             except (tf2_ros.LookupException, tf2_ros.ConnectivityException, tf2_ros.ExtrapolationException):
                 continue
 
-            s0_to_s1 = np.dot(np.linalg.inv(b_sensor0), b_sensor1)
-            angle_tf_1 = np.dot(np.linalg.inv(self.s0_to_s1_i), s0_to_s1)
+            s1_to_s0 = np.dot(np.linalg.inv(b_sensor1), b_sensor0)
+            s2_to_s1 = np.dot(np.linalg.inv(b_sensor2), b_sensor1)
+            angle_tf_1 = np.dot(np.linalg.inv(self.s1_to_s0_i), s1_to_s0)
+            angle_tf_2 = np.dot(np.linalg.inv(self.s2_to_s1_i), s2_to_s1)
 
             ax1, angle_1, pt1 = td.axangles.aff2axangle(angle_tf_1)
+            ax2, angle_2, pt2 = td.axangles.aff2axangle(angle_tf_2)
 
-            msg = std_msgs.msg.Float32()
-            msg.data = angle_1 * (180 / np.pi)
+            msg = std_msgs.msg.String()
+            angle_str = "angle 1: " + str(angle_1 * (180 / np.pi)) + ", angle 2: " + str(angle_2 * (180 / np.pi))
+            msg.data = angle_str
 
             self.joint_angle.publish(msg)
 
