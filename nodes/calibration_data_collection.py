@@ -32,6 +32,7 @@ class CalibrationDataCollection(object):
             s1_to_s0 = self.get_transform()
             if s1_to_s0 is None: continue 
             neutral_poses.append(s1_to_s0)
+            rospy.loginfo("Transform %s saved"%(t))
             t=t+1    
         if t<num_transforms:
             rospy.logerr("Failed to get enough transforms")
