@@ -35,7 +35,7 @@ class CalibrationDataCollection(object):
             s1_to_s0 = self.get_transform()
             if s1_to_s0 is None: continue 
             neutral_poses.append(s1_to_s0)
-            rospy.loginfo("Transform %s saved"%(t))
+            rospy.loginfo("Transform %s saved"%(t+1))
             t=t+1    
         if t<num_transforms:
             rospy.logerr("Failed to get enough transforms")
@@ -52,43 +52,6 @@ class CalibrationDataCollection(object):
         if np.linalg.norm(t1[0:2, 3] - t2[0:2, 3]) >= 0.005:
             return True
         return False
-
-    def record_test_transforms(self, file):
-        test_poses = []
-        rate = rospy.Rate(0.2)
-
-        print("Position at 45 degrees")
-        rate.sleep()
-        s1_to_s0 = self.get_transform()
-        if s1_to_s0 is None: return
-        test_poses.append(s1_to_s0)
-
-        print("Position at 90 degrees")
-        rate.sleep()
-        s1_to_s0 = self.get_transform()
-        if s1_to_s0 is None: return
-        test_poses.append(s1_to_s0)
-
-        print("Position at -45 degrees")
-        rate.sleep()
-        s1_to_s0 = self.get_transform()
-        if s1_to_s0 is None: return
-        test_poses.append(s1_to_s0)
-
-        print("Position at -90 degrees")
-        rate.sleep()
-        s1_to_s0 = self.get_transform()
-        if s1_to_s0 is None: return
-        test_poses.append(s1_to_s0)
-
-        print("Position at 0 degrees")
-        rate.sleep()
-        s1_to_s0 = self.get_transform()
-        if s1_to_s0 is None: return
-        test_poses.append(s1_to_s0)
-
-        pickle.dump(test_poses, file)
-        rospy.loginfo("All test transforms saved")    
 
     def get_transform(self):
         '''
@@ -125,7 +88,7 @@ class CalibrationDataCollection(object):
                 sweeping_poses.append(s1_to_s0)
                 t=t+1
                 previous_transform = s1_to_s0
-                rospy.loginfo("Transform saved")    
+                rospy.loginfo("Transform %s saved"%(t))    
 
         if t<num_transforms:
             rospy.logerr("Failed to get enough transforms")
@@ -133,7 +96,7 @@ class CalibrationDataCollection(object):
         
         # Save transforms stored in a list to a pickle file
         pickle.dump(sweeping_poses, file)
-        rospy.loginfo("All sweeping transforms saved")    
+        rospy.loginfo("All 40 sweeping transforms saved.")    
 
 if __name__ == '__main__':
     rospy.init_node('calibration_data_collection', anonymous=True)
@@ -141,5 +104,4 @@ if __name__ == '__main__':
     file = open('calibration_poses', 'wb')
     cdc.record_neutral_angle_transforms(10, file)
     cdc.record_finger_sweeping_transforms(40, file)
-    cdc.record_test_transforms(file)
     file.close()
