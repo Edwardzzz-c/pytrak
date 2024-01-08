@@ -14,11 +14,12 @@ class CalibratedDataPublisher(object):
         listener = tf2_ros.TransformListener(self.tfBuffer)
         self.calibrated_joint_angle = rospy.Publisher('calibrated_joint_angle', std_msgs.msg.Float32, queue_size = 1)
         self.timer = rospy.Timer(rospy.Duration(0.01), self.timer_callback)
+        self.sensor_information = {"x" : [], "y" : [], "theta" : [], "transforms" : []}
 
     def load_file(self, filename):
         '''
         Loads in the calibration information stored in dictionary `calibration_information`.
-        Contains "plane_rotation," "plane_translation," and "neutral_transform"
+        Contains "plane_rotation," "plane_translation," and "neutral_transform".
         '''
         try:
             file = open(filename, 'rb')
@@ -30,22 +31,42 @@ class CalibratedDataPublisher(object):
 
     def timer_callback(self, timer):
         '''
-        Gets transforms from Trakstar and publishes the joint angle to `calibrated_joint_angle`
+        Gets transforms from Trakstar and publishes the joint angle to `\calibrated_joint_angle.`
         '''
         # Collect the raw sensor 1 to sensor 0 transform 
-        t_raw = self.get_transform()
-        if t_raw is None: return
+        raw_transform = self.get_transform()
+        if raw_transform is None: return
 
         # Rotate the raw transform into the plane 
-        t = np.dot(self.calibration_information["plane_rotation"], t_raw)
+        plane_transform = np.dot(self.calibration_information["plane_rotation"], raw_transform)
+        plane_transform = np.dot(self.calibration_information["plane_translation"], plane_transform)
+        # Find the transform between the neutral transform and the current transform to get the joint angle
+        joint_transform = np.dot(np.linalg.inv(self.calibration_information["neutral_transform"]), plane_transform)
         # Calculate the angle between the neutral pose and the current pose
-        theta = td.euler.mat2euler(np.dot(np.linalg.inv(self.calibration_information["neutral_transform"]), t), axes = 'szxy')[0]*(180/np.pi)
-        
+        theta = td.euler.mat2euler(joint_transform, axes = 'szxy')[0]
+        # Define the x and y position of sensor 1
+        x = plane_transform[0, 3]
+        y = plane_transform[1, 3]
+        # Saves x, y, theta to dictionary `sensor_information`
+        self.sensor_information["x"].append(x)
+        self.sensor_information["y"].append(y)
+        self.sensor_information["theta"].append(theta)
+        self.sensor_information["transforms"].append(plane_transform)
+
         # Publish the angle to ROS
         msg = std_msgs.msg.Float32()
-        msg.data = theta
+        msg.data = theta*(180/np.pi)
         self.calibrated_joint_angle.publish(msg)
     
+    def save_sensor_information(self, outfile):
+        '''
+        Saves sensor information dictionary, `sensor_information`, into a file. 
+        '''
+        pickle.dump(self.sensor_information, outfile)
+        pickle.dump(self.calibration_information, outfile)
+        outfile.close()
+        print("Saved sensor information.")
+
     def to_affine(self, t):
         '''
         Returns the 4x4 homogenous transform from the Transform message. 
@@ -68,12 +89,15 @@ class CalibratedDataPublisher(object):
             s1_to_s0 = np.dot(np.linalg.inv(b_sensor1), b_sensor0)
             return s1_to_s0
         except (tf2_ros.LookupException, tf2_ros.ConnectivityException, tf2_ros.ExtrapolationException):
-            rospy.logerr("Calibration data collection: failed to get transforms")
+            rospy.logerr("Calibration data collection: failed to get transforms.")
             return None
 
 if __name__ == '__main__':
     rospy.init_node('calibrated_data_publisher', anonymous=True)
+    outfile = open('sensor_information', 'wb')
     cdp = CalibratedDataPublisher()
     if not cdp.load_file('calibration_information'):
-        exit(0)
+        exit()
     rospy.spin()
+    if rospy.is_shutdown():
+        cdp.save_sensor_information(outfile)
