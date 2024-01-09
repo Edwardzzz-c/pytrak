@@ -46,7 +46,7 @@
   </node>
 
   <node pkg="rosbag" type="record" name="trakstar_bag" 
-        args="--split --duration=10m -o $(find trakstar)/collected_data/rosbag/p1.bag /tf /futek /raw_emg" 
+        args="--split --duration=5m -o $(find trakstar)/collected_data/rosbag/p1.bag /tf /futek /raw_emg" 
     />
 
 </launch>
