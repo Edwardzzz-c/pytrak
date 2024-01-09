@@ -5,8 +5,8 @@ trakstar_ros
 ros driver for trakstar magnetic tracker
 
 Instructions for installing first time:
-  1. make sure libusb is installed
-  2. copy contents of '99-trakstar.rules' to /lib/udev/rules.d/99-libusb.rules
+  1. make sure libusb-1.0-0-dev, libusb-dev is installed
+  2. copy contents of 'config/99-trakstar.rules' to /lib/udev/rules.d/99-libusb.rules
   3. If libusb is giving you issues, see notes at bottom of https://github.com/ChristophJud/ATC3DGTracker readme
 
 Instructions to run (11/10/2023, AEC):
