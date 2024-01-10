@@ -51,7 +51,7 @@ class JointAngle(object):
             ax2, angle_2, pt2 = td.axangles.aff2axangle(angle_tf_2)
 
             msg = std_msgs.msg.String()
-            angle_str = "angle 1: " + str(angle_1 * (180 / np.pi)) + ", angle 2: " + str(angle_2 * (180 / np.pi))
+            angle_str = "angle 1: " + str(angle_1 * (180 / np.pi))[:7] + ", angle 2: " + str(angle_2 * (180 / np.pi))[:7]
             msg.data = angle_str
 
             self.joint_angle.publish(msg)
