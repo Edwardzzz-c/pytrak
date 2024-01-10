@@ -11,8 +11,7 @@ import matplotlib
 class JointLengths(object):
 
 	def __init__(self):
-		self.t1_length = None
-		self.t2_length = None
+		self.lengths = {}
 		pass
 
 	def load_file(self, filename):
@@ -32,9 +31,13 @@ class JointLengths(object):
 			return False
 		return True
 
-	def circlefit(self):
-		x = self.sensor_information["x"]
-		y = self.sensor_information["y"]
+	def circlefit(self, joint):
+		x = []#self.sensor_information["x"]
+		y = []#self.sensor_information["y"]
+		for t in self.sensor_information[joint]["transforms"]:
+			pt = np.linalg.inv(t)
+			x.append(pt[0, 3])
+			y.append(pt[1, 3])
 
 		a = np.linspace(0, 2*np.pi, 100)
 		print(np.shape(np.array([x, y]).T))
@@ -47,11 +50,15 @@ class JointLengths(object):
 		plt.plot(x, y, 'o', markersize=1, label="sensor")
 		plt.axis('equal')
 		plt.show()
+		return True
 
-	def calculate_joint_lengths(self):
-		x = self.sensor_information["x"]
-		y = self.sensor_information["y"]
-
+	def calculate_joint_lengths(self, joint):
+		x = [] #self.sensor_information["x"]
+		y = [] #self.sensor_information["y"]
+		for t in self.sensor_information[joint]["transforms"]:
+			pt = np.linalg.inv(t)
+			x.append(pt[0, 3])
+			y.append(pt[1, 3])
 		LHS = []
 		RHS = []
 
@@ -60,7 +67,7 @@ class JointLengths(object):
 			exit()
 
 		for i in range(len(x)):
-			theta = self.sensor_information["theta"][i]
+			theta = -self.sensor_information[joint]["theta"][i]
 			lhs = np.zeros((2, 4))
 			lhs[0, 0] = 1
 			lhs[0, 2] = np.cos(theta)
@@ -84,24 +91,31 @@ class JointLengths(object):
 		t1 = np.sqrt((t1_x)**2 + (t1_y)**2)*1000
 		t2 = np.sqrt((t2_x)**2 + (t2_y)**2)*1000
 	
-		print(t1, t2)
-		print(self.calibration_information["total_length"]*1000)
+		self.lengths[joint] = [t1, t2]
+		return True
 
 	def save_joint_length_information(self, outfile_name):
 		'''
 		Saves calibration information dictionary, `calibration_information`, into a file. 
 		'''
 		outfile = open(outfile_name, 'wb')
-		pickle.dump([self.t1_length, self.t2_length], outfile)
+		pickle.dump(self.lengths, outfile)
 		outfile.close()
-		print("Saved joint lengths")
+		print("Saved joint lengths.")
 
 def main(args):
 	jointlengths = JointLengths()
 	if not jointlengths.load_file(args.file):
 		exit()
-	if not jointlengths.calculate_joint_lengths():
+	if not jointlengths.circlefit("mcp"):
 		exit()
+	if not jointlengths.circlefit("dip"):
+		exit()
+	if not jointlengths.calculate_joint_lengths("mcp"):
+		exit()
+	if not jointlengths.calculate_joint_lengths("dip"):
+		exit()
+	print(jointlengths.lengths)
 	jointlengths.save_joint_length_information(args.outfile)
 
 if __name__ == '__main__':

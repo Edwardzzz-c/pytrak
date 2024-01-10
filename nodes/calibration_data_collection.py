@@ -28,13 +28,16 @@ class CalibrationDataCollection(object):
         Records the hand in a neutral pose to get a baseline position.
         '''
         t = 0
-        neutral_poses = []
+        neutral_poses = {"mcp" : [], "dip" : []}
         rate = rospy.Rate(5)
         while not rospy.is_shutdown() and t<num_transforms:
             rate.sleep()
-            s1_to_s0 = self.get_transform()
+            s1_to_s0 = self.get_transform("mcp")
+            s2_to_s1 = self.get_transform("dip")
             if s1_to_s0 is None: continue 
-            neutral_poses.append(s1_to_s0)
+            if s2_to_s1 is None: continue
+            neutral_poses["mcp"].append(s1_to_s0)
+            neutral_poses["dip"].append(s2_to_s1)
             rospy.loginfo("Transform %s saved"%(t+1))
             t=t+1    
         if t<num_transforms:
@@ -43,17 +46,17 @@ class CalibrationDataCollection(object):
         
         # Save transforms stored in a list to a pickle file
         pickle.dump(neutral_poses, file)
-        rospy.loginfo("All neutral transform saved")    
+        rospy.loginfo("All neutral transforms saved")    
 
     def different_transforms(self, t1, t2):
         '''
-        Returns whether the translational difference between two transforms is greater than 5 mm
+        Returns whether the translational difference between two transforms is greater than 2 mm
         '''
-        if np.linalg.norm(t1[0:2, 3] - t2[0:2, 3]) >= 0.005:
+        if np.linalg.norm(t1[0:2, 3] - t2[0:2, 3]) >= 0.01:
             return True
         return False
 
-    def get_transform(self):
+    def get_transform(self, joint):
         '''
         Returns the transform from sensor 1 to sensor 0.
         '''
@@ -61,8 +64,13 @@ class CalibrationDataCollection(object):
             # Calculating the transform from Sensor 0 to Sensor 1
             b_sensor0 = self.to_affine(self.tfBuffer.lookup_transform('trakstar_base', 'trakstar0', rospy.Time(0), rospy.Duration(1.0)))
             b_sensor1 = self.to_affine(self.tfBuffer.lookup_transform('trakstar_base', 'trakstar1', rospy.Time(0), rospy.Duration(1.0)))
+            b_sensor2 = self.to_affine(self.tfBuffer.lookup_transform('trakstar_base', 'trakstar2', rospy.Time(0), rospy.Duration(1.0)))
             s1_to_s0 = np.dot(np.linalg.inv(b_sensor1), b_sensor0)
-            return s1_to_s0
+            s2_to_s1 = np.dot(np.linalg.inv(b_sensor2), b_sensor1)
+            if joint == "mcp":
+                return s1_to_s0
+            elif joint == "dip": 
+                return s2_to_s1
         except (tf2_ros.LookupException, tf2_ros.ConnectivityException, tf2_ros.ExtrapolationException):
             rospy.logerr("Calibration data collection: failed to get transforms")
             return None
@@ -73,21 +81,24 @@ class CalibrationDataCollection(object):
         Transforms are only recorded when there is a difference in translational position of more than 5 mm. 
         '''
         t = 0
-        sweeping_poses = []
+        sweeping_poses = {"mcp" : [], "dip" : []}
         rate = rospy.Rate(5)
         # Defining the identity transform
         previous_transform = td.affines.compose(np.zeros(3), np.eye(3), np.ones(3))
 
         while not rospy.is_shutdown() and t<num_transforms:
             rate.sleep()
-            s1_to_s0 = self.get_transform()
+            s1_to_s0 = self.get_transform("mcp")
+            s2_to_s1 = self.get_transform("dip")
             if s1_to_s0 is None: continue 
+            if s2_to_s1 is None: continue
 
-            # Only record transform if the difference in translational position > 5mm
-            if self.different_transforms(s1_to_s0, previous_transform):
-                sweeping_poses.append(s1_to_s0)
+            # Only record transform if the difference in translational position > 2mm
+            if self.different_transforms(s2_to_s1, previous_transform):
+                sweeping_poses["mcp"].append(s1_to_s0)
+                sweeping_poses["dip"].append(s2_to_s1)
                 t=t+1
-                previous_transform = s1_to_s0
+                previous_transform = s2_to_s1
                 rospy.loginfo("Transform %s saved"%(t))    
 
         if t<num_transforms:
