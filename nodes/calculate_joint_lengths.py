@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 
 import transforms3d as td
 import numpy as np
@@ -106,10 +106,6 @@ class JointLengths(object):
 def main(args):
 	jointlengths = JointLengths()
 	if not jointlengths.load_file(args.file):
-		exit()
-	if not jointlengths.circlefit("mcp"):
-		exit()
-	if not jointlengths.circlefit("dip"):
 		exit()
 	if not jointlengths.calculate_joint_lengths("mcp"):
 		exit()

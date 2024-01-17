@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 
 import rospy
 import tf2_ros
@@ -66,7 +66,7 @@ class CalibratedDataPublisher(object):
         # Find the transform between the neutral transform and the current transform to get the joint angle
         joint_transform_dip = np.dot(np.linalg.inv(self.calibration_information["dip"]["neutral_transform"]), plane_transform_dip)
         # Calculate the angle between the neutral pose and the current pose
-        theta_dip = td.euler.mat2euler(joint_transform_dip, axes = 'szxy')[0]
+        theta_dip = td.euler.mat2euler(joint_transform_dip, axes = 'szxy')[2]
         # Define the x and y position of sensor 1
         x = plane_transform_dip[0, 3]
         y = plane_transform_dip[1, 3]

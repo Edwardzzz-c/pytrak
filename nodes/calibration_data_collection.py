@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 
 import rospy
 import tf2_ros
@@ -52,7 +52,7 @@ class CalibrationDataCollection(object):
         '''
         Returns whether the translational difference between two transforms is greater than 2 mm
         '''
-        if np.linalg.norm(t1[0:2, 3] - t2[0:2, 3]) >= 0.01:
+        if np.linalg.norm(t1[0:2, 3] - t2[0:2, 3]) >= 0.005:
             return True
         return False
 
@@ -94,11 +94,11 @@ class CalibrationDataCollection(object):
             if s2_to_s1 is None: continue
 
             # Only record transform if the difference in translational position > 2mm
-            if self.different_transforms(s2_to_s1, previous_transform):
+            if self.different_transforms(s1_to_s0, previous_transform):
                 sweeping_poses["mcp"].append(s1_to_s0)
                 sweeping_poses["dip"].append(s2_to_s1)
                 t=t+1
-                previous_transform = s2_to_s1
+                previous_transform = s1_to_s0
                 rospy.loginfo("Transform %s saved"%(t))    
 
         if t<num_transforms:
