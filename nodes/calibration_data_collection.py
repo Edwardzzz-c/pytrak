@@ -70,7 +70,7 @@ class CalibrationDataCollection(object):
 
     def different_transforms(self, t1, t2):
         '''
-        Returns whether the translational difference between two transforms is greater than 2 mm
+        Returns whether the translational difference between two transforms is greater than 5 mm
         '''
         if np.linalg.norm(t1[0:2, 3] - t2[0:2, 3]) >= 0.005:
             return True

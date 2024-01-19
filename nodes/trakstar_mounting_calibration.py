@@ -29,18 +29,20 @@ class Calibrator(object):
 			return False
 		return True
 	
-	def get_pca_least_var_axis(data):
+	def get_pca_least_var_axis(self, data):
 		n = len(data)
-		sweeping_translations = np.zeros((n, 3))
+		points = np.zeros((n, 3))
 		
 		for i, transform in enumerate(data):
+			transform = np.linalg.inv(transform)
 			translation = transform[:3, 3]
-			sweeping_translations[i, :3] = translation
+			points[i, :3] = translation
 
 		pca = PCA()
-		pca.fit(sweeping_translations)
+		pca.fit(points)
 		print("Variance explained: %s"%(pca.explained_variance_ratio_))
 		print("Plane normal: \n %s"%(pca.components_))
+		print("Axis of least variation: %s"%(pca.components_[2,:]))
 		return pca.components_[2,:]
 	
 	def save_calibration_information(self, outfile_name):
@@ -51,7 +53,7 @@ class Calibrator(object):
 		joint_axis = self.get_pca_least_var_axis(sensor_2_sweeping_poses)
 
 		# re-orient joint-axis to get correct direction from Sensor 0 to Sensor 1
-		joint_axis = -1*joint_axis
+		#joint_axis = -1*joint_axis
 		
 		self.calibration_info["joint_axis"] = joint_axis
 		self.calibration_info["sensor_1_neutral_pose"] = self.neutral_poses["sensor_1"][2]

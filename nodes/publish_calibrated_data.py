@@ -14,7 +14,7 @@ class CalibratedDataPublisher(object):
         listener = tf2_ros.TransformListener(self.tfBuffer)
         self.calibrated_joint_angle = rospy.Publisher('calibrated_joint_angle', std_msgs.msg.String, queue_size = 1)
         self.timer = rospy.Timer(rospy.Duration(0.01), self.timer_callback)
-        self.joint_angle_info = {"mcp_angles" : [], "dip_angles" : []}
+        #self.joint_angle_info = {"mcp_angles" : [], "dip_angles" : []}
 
     def load_file(self, filename):
         '''
@@ -33,8 +33,6 @@ class CalibratedDataPublisher(object):
         '''
         Gets transforms from Trakstar and publishes the joint angle to `\calibrated_joint_angle.`
         '''
-        theta_mcp = 0
-
         # Collect the raw sensor 0 to sensor 1 transform and the raw sensor 0 to sensor 1 transform
         s1_raw_transform = self.get_transform("sensor_1")
         s2_raw_transform = self.get_transform("sensor_2")
@@ -46,13 +44,12 @@ class CalibratedDataPublisher(object):
         s2_neutral_pose = self.calibration_info["sensor_2_neutral_pose"]
         joint_axis = self.calibration_info["joint_axis"]
 
-
         mcp_angle = self.calculate_relative_angle(s1_neutral_pose, s1_raw_transform, joint_axis)
         dip_angle = self.calculate_relative_angle(s2_neutral_pose, s2_raw_transform, joint_axis) - mcp_angle
 
         # Saves joint angles to dictionary `joint_angle_info`
-        self.joint_angle_info["mcp_angles"].append(mcp_angle)
-        self.joint_angle_info["dip_angles"].append(dip_angle)
+        #self.joint_angle_info["mcp_angles"].append(mcp_angle)
+        #self.joint_angle_info["dip_angles"].append(dip_angle)
 
         # Publish the angle to ROS
         msg = std_msgs.msg.String()
@@ -87,8 +84,8 @@ class CalibratedDataPublisher(object):
             return twist_theta
         
     def calculate_relative_angle(self, reference_transform, target_transform, axis):
-        
-        relative_transform = np.dot(np.linalg.inv(reference_transform), target_transform)[0]
+
+        relative_transform = np.dot(np.linalg.inv(reference_transform), target_transform)
         theta = self.rotation_about_axis(relative_transform, axis)*(180/np.pi)
         
         return theta
@@ -135,7 +132,7 @@ if __name__ == '__main__':
     rospy.init_node('calibrated_data_publisher', anonymous=True)
     outfile = open('sensor_information', 'wb')
     cdp = CalibratedDataPublisher()
-    if not cdp.load_file('calibration_information'):
+    if not cdp.load_file('calibration_info'):
         exit()
     rospy.spin()
     if rospy.is_shutdown():
