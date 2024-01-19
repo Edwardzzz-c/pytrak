@@ -22,22 +22,42 @@ class CalibrationDataCollection(object):
         Z = np.ones(3)
 
         return td.affines.compose(T, R, Z)
+    
+    def get_transform(self, sensor):
+        '''
+        Returns the transform from sensor 0 to the user-defined sensor.
+        '''
+        try:
+            # Calculating the transform from Sensor 0 to Sensor 1
+            b_sensor0 = self.to_affine(self.tfBuffer.lookup_transform('trakstar_base', 'trakstar0', rospy.Time(0), rospy.Duration(1.0)))
+            b_sensor1 = self.to_affine(self.tfBuffer.lookup_transform('trakstar_base', 'trakstar1', rospy.Time(0), rospy.Duration(1.0)))
+            b_sensor2 = self.to_affine(self.tfBuffer.lookup_transform('trakstar_base', 'trakstar2', rospy.Time(0), rospy.Duration(1.0)))
+            s0_to_s1 = np.dot(np.linalg.inv(b_sensor0), b_sensor1)
+            s0_to_s2 = np.dot(np.linalg.inv(b_sensor0), b_sensor2)
+            if sensor == "sensor_1":
+                return s0_to_s1
+            elif sensor == "sensor_2": 
+                return s0_to_s2
+        except (tf2_ros.LookupException, tf2_ros.ConnectivityException, tf2_ros.ExtrapolationException):
+            rospy.logerr("Calibration data collection: failed to get transforms")
+            return None
 
     def record_neutral_angle_transforms(self, num_transforms, file):
         '''
         Records the hand in a neutral pose to get a baseline position.
         '''
         t = 0
-        neutral_poses = {"mcp" : [], "dip" : []}
+        neutral_poses = {"sensor_1" : [], "sensor_2" : []}
         rate = rospy.Rate(5)
+
         while not rospy.is_shutdown() and t<num_transforms:
             rate.sleep()
-            s1_to_s0 = self.get_transform("mcp")
-            s2_to_s1 = self.get_transform("dip")
-            if s1_to_s0 is None: continue 
-            if s2_to_s1 is None: continue
-            neutral_poses["mcp"].append(s1_to_s0)
-            neutral_poses["dip"].append(s2_to_s1)
+            s0_to_s1 = self.get_transform("sensor_1")
+            s0_to_s2 = self.get_transform("sensor_2")
+            if s0_to_s1 is None: continue 
+            if s0_to_s2 is None: continue
+            neutral_poses["sensor_1"].append(s0_to_s1)
+            neutral_poses["sensor_2"].append(s0_to_s2)
             rospy.loginfo("Transform %s saved"%(t+1))
             t=t+1    
         if t<num_transforms:
@@ -56,49 +76,30 @@ class CalibrationDataCollection(object):
             return True
         return False
 
-    def get_transform(self, joint):
-        '''
-        Returns the transform from sensor 1 to sensor 0.
-        '''
-        try:
-            # Calculating the transform from Sensor 0 to Sensor 1
-            b_sensor0 = self.to_affine(self.tfBuffer.lookup_transform('trakstar_base', 'trakstar0', rospy.Time(0), rospy.Duration(1.0)))
-            b_sensor1 = self.to_affine(self.tfBuffer.lookup_transform('trakstar_base', 'trakstar1', rospy.Time(0), rospy.Duration(1.0)))
-            b_sensor2 = self.to_affine(self.tfBuffer.lookup_transform('trakstar_base', 'trakstar2', rospy.Time(0), rospy.Duration(1.0)))
-            s1_to_s0 = np.dot(np.linalg.inv(b_sensor1), b_sensor0)
-            s2_to_s1 = np.dot(np.linalg.inv(b_sensor2), b_sensor1)
-            if joint == "mcp":
-                return s1_to_s0
-            elif joint == "dip": 
-                return s2_to_s1
-        except (tf2_ros.LookupException, tf2_ros.ConnectivityException, tf2_ros.ExtrapolationException):
-            rospy.logerr("Calibration data collection: failed to get transforms")
-            return None
-
     def record_finger_sweeping_transforms(self, num_transforms, file):
         '''
         Records the transforms that define the finger's full range of motion. 
         Transforms are only recorded when there is a difference in translational position of more than 5 mm. 
         '''
         t = 0
-        sweeping_poses = {"mcp" : [], "dip" : []}
+        sweeping_poses = {"sensor_1" : [], "sensor_2" : []}
         rate = rospy.Rate(5)
         # Defining the identity transform
         previous_transform = td.affines.compose(np.zeros(3), np.eye(3), np.ones(3))
 
         while not rospy.is_shutdown() and t<num_transforms:
             rate.sleep()
-            s1_to_s0 = self.get_transform("mcp")
-            s2_to_s1 = self.get_transform("dip")
-            if s1_to_s0 is None: continue 
-            if s2_to_s1 is None: continue
+            s0_to_s1 = self.get_transform("sensor_1")
+            s0_to_s2 = self.get_transform("sensor_2")
+            if s0_to_s1 is None: continue 
+            if s0_to_s2 is None: continue
 
             # Only record transform if the difference in translational position > 2mm
-            if self.different_transforms(s1_to_s0, previous_transform):
-                sweeping_poses["mcp"].append(s1_to_s0)
-                sweeping_poses["dip"].append(s2_to_s1)
+            if self.different_transforms(s0_to_s2, previous_transform):
+                sweeping_poses["sensor_1"].append(s0_to_s1)
+                sweeping_poses["sensor_2"].append(s0_to_s2)
                 t=t+1
-                previous_transform = s1_to_s0
+                previous_transform = s0_to_s2
                 rospy.loginfo("Transform %s saved"%(t))    
 
         if t<num_transforms:
@@ -107,7 +108,7 @@ class CalibrationDataCollection(object):
         
         # Save transforms stored in a list to a pickle file
         pickle.dump(sweeping_poses, file)
-        rospy.loginfo("All 40 sweeping transforms saved.")    
+        rospy.loginfo("All %s sweeping transforms saved."%(num_transforms))    
 
 if __name__ == '__main__':
     rospy.init_node('calibration_data_collection', anonymous=True)

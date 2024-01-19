@@ -14,7 +14,7 @@ class CalibratedDataPublisher(object):
         listener = tf2_ros.TransformListener(self.tfBuffer)
         self.calibrated_joint_angle = rospy.Publisher('calibrated_joint_angle', std_msgs.msg.String, queue_size = 1)
         self.timer = rospy.Timer(rospy.Duration(0.01), self.timer_callback)
-        self.sensor_information = {}
+        self.joint_angle_info = {"mcp_angles" : [], "dip_angles" : []}
 
     def load_file(self, filename):
         '''
@@ -23,7 +23,7 @@ class CalibratedDataPublisher(object):
         '''
         try:
             file = open(filename, 'rb')
-            self.calibration_information = pickle.load(file)
+            self.calibration_info = pickle.load(file)
         except IOError:
             print("Failed to read file")
             return False
@@ -34,63 +34,72 @@ class CalibratedDataPublisher(object):
         Gets transforms from Trakstar and publishes the joint angle to `\calibrated_joint_angle.`
         '''
         theta_mcp = 0
-        theta_dip = 0
 
-        # Collect the raw sensor 1 to sensor 0 transform 
-        raw_transform_mcp = self.get_transform("mcp")
-        raw_transform_dip = self.get_transform("dip")
-        if raw_transform_mcp is None: return
-        if raw_transform_dip is None: return 
+        # Collect the raw sensor 0 to sensor 1 transform and the raw sensor 0 to sensor 1 transform
+        s1_raw_transform = self.get_transform("sensor_1")
+        s2_raw_transform = self.get_transform("sensor_2")
         
-        # Rotate the raw transform into the plane 
-        plane_transform_mcp = np.dot(self.calibration_information["mcp"]["plane_rotation"], raw_transform_mcp)
-        plane_transform_mcp = np.dot(self.calibration_information["mcp"]["plane_translation"], plane_transform_mcp)
-        # Find the transform between the neutral transform and the current transform to get the joint angle
-        joint_transform_mcp = np.dot(np.linalg.inv(self.calibration_information["mcp"]["neutral_transform"]), plane_transform_mcp)
-        # Calculate the angle between the neutral pose and the current pose
-        theta_mcp = td.euler.mat2euler(joint_transform_mcp, axes = 'szxy')[0]
-        # Define the x and y position of sensor 1
-        x = plane_transform_mcp[0, 3]
-        y = plane_transform_mcp[1, 3]
-        # Saves x, y, theta to dictionary `sensor_information`
-        joint_dict_mcp = {"x" : [], "y" : [], "theta" : [], "transforms" : []}
-        joint_dict_mcp["x"].append(x)
-        joint_dict_mcp["y"].append(y)
-        joint_dict_mcp["theta"].append(theta_mcp)
-        joint_dict_mcp["transforms"].append(plane_transform_mcp)
-        self.sensor_information["mcp"] = joint_dict_mcp
+        if s1_raw_transform is None: return
+        if s2_raw_transform is None: return
+        
+        s1_neutral_pose = self.calibration_info["sensor_1_neutral_pose"]
+        s2_neutral_pose = self.calibration_info["sensor_2_neutral_pose"]
+        joint_axis = self.calibration_info["joint_axis"]
 
-        # Rotate the raw transform into the plane 
-        plane_transform_dip = np.dot(self.calibration_information["dip"]["plane_rotation"], raw_transform_dip)
-        plane_transform_dip = np.dot(self.calibration_information["dip"]["plane_translation"], plane_transform_dip)
-        # Find the transform between the neutral transform and the current transform to get the joint angle
-        joint_transform_dip = np.dot(np.linalg.inv(self.calibration_information["dip"]["neutral_transform"]), plane_transform_dip)
-        # Calculate the angle between the neutral pose and the current pose
-        theta_dip = td.euler.mat2euler(joint_transform_dip, axes = 'szxy')[2]
-        # Define the x and y position of sensor 1
-        x = plane_transform_dip[0, 3]
-        y = plane_transform_dip[1, 3]
-        # Saves x, y, theta to dictionary `sensor_information`
-        joint_dict_dip = {"x" : [], "y" : [], "theta" : [], "transforms" : []}
-        joint_dict_dip["x"].append(x)
-        joint_dict_dip["y"].append(y)
-        joint_dict_dip["theta"].append(theta_dip)
-        joint_dict_dip["transforms"].append(plane_transform_dip)
-        self.sensor_information["dip"] = joint_dict_dip
+
+        mcp_angle = self.calculate_relative_angle(s1_neutral_pose, s1_raw_transform, joint_axis)
+        dip_angle = self.calculate_relative_angle(s2_neutral_pose, s2_raw_transform, joint_axis) - mcp_angle
+
+        # Saves joint angles to dictionary `joint_angle_info`
+        self.joint_angle_info["mcp_angles"].append(mcp_angle)
+        self.joint_angle_info["dip_angles"].append(dip_angle)
 
         # Publish the angle to ROS
         msg = std_msgs.msg.String()
-        msg.data = "MCP : %s, DIP: %s"%(str(theta_mcp*(180/np.pi))[:7], str(theta_dip*(180/np.pi))[:7])
+        msg.data = "MCP : %s, DIP: %s"%(str(mcp_angle)[:7], str(dip_angle)[:7])
         self.calibrated_joint_angle.publish(msg)
+    
+    def rotation_about_axis(self, transform, axis):
+        # quaternion convention is [w, x, y, z]
+        transform_rot = transform[:3, :3]
+        transform_quat = td.quaternions.mat2quat(transform_rot)
+        transform_axes = np.array([transform_quat[1], transform_quat[2], transform_quat[3]])
+        
+        dot_product = np.dot(transform_axes, axis)
+        axis_norm = np.linalg.norm(axis)
+        projection = (dot_product / axis_norm**2) * axis 
+        
+        # define twist in quaternion form 
+        twist = np.array([transform_quat[0], projection[0], projection[1], projection[2]])
+        # catching singularities
+        if td.quaternions.qnorm(twist) == 0:
+            print("singularity")
+            return
+
+        twist_axis, twist_theta = td.quaternions.quat2axangle(twist)
+        if twist_axis.all() != axis.all():
+            print("axis of rotation is not given axis. something went wrong")
+            return
+        
+        if dot_product < 0.0:
+            return -1*twist_theta
+        else:
+            return twist_theta
+        
+    def calculate_relative_angle(self, reference_transform, target_transform, axis):
+        
+        relative_transform = np.dot(np.linalg.inv(reference_transform), target_transform)[0]
+        theta = self.rotation_about_axis(relative_transform, axis)*(180/np.pi)
+        
+        return theta
     
     def save_sensor_information(self, outfile):
         '''
         Saves sensor information dictionary, `sensor_information`, into a file. 
         '''
-        pickle.dump(self.sensor_information, outfile)
-        pickle.dump(self.calibration_information, outfile)
+        pickle.dump(self.joint_angle_info, outfile)
         outfile.close()
-        print("Saved sensor information.")
+        print("Saved joint angle information.")
 
     def to_affine(self, t):
         '''
@@ -103,23 +112,23 @@ class CalibratedDataPublisher(object):
 
         return td.affines.compose(T, R, Z)
     
-    def get_transform(self, joint):
+    def get_transform(self, sensor):
         '''
-        Returns the transform from sensor 1 to sensor 0.
+        Returns the transform from sensor 0 to the user-defined sensor.
         '''
         try:
             # Calculating the transform from Sensor 0 to Sensor 1
             b_sensor0 = self.to_affine(self.tfBuffer.lookup_transform('trakstar_base', 'trakstar0', rospy.Time(0), rospy.Duration(1.0)))
             b_sensor1 = self.to_affine(self.tfBuffer.lookup_transform('trakstar_base', 'trakstar1', rospy.Time(0), rospy.Duration(1.0)))
             b_sensor2 = self.to_affine(self.tfBuffer.lookup_transform('trakstar_base', 'trakstar2', rospy.Time(0), rospy.Duration(1.0)))
-            s1_to_s0 = np.dot(np.linalg.inv(b_sensor1), b_sensor0)
-            s2_to_s1 = np.dot(np.linalg.inv(b_sensor2), b_sensor1)
-            if joint == "mcp":
-                return s1_to_s0
-            elif joint == "dip": 
-                return s2_to_s1
+            s0_to_s1 = np.dot(np.linalg.inv(b_sensor0), b_sensor1)
+            s0_to_s2 = np.dot(np.linalg.inv(b_sensor0), b_sensor2)
+            if sensor == "sensor_1":
+                return s0_to_s1
+            elif sensor == "sensor_2": 
+                return s0_to_s2
         except (tf2_ros.LookupException, tf2_ros.ConnectivityException, tf2_ros.ExtrapolationException):
-            rospy.logerr("Calibration data collection: failed to get transforms.")
+            rospy.logerr("Calibration data collection: failed to get transforms")
             return None
 
 if __name__ == '__main__':
