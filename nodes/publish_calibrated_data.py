@@ -72,7 +72,7 @@ class CalibratedDataPublisher(object):
         
         # catching singularities
         threshold = 1e-6
-        if np.linalg.norm(twist[1:]) < threshold:
+        if td.quaternions.qnorm(twist) < threshold:
             print("Singularity")
             return
     
