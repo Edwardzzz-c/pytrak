@@ -68,14 +68,17 @@ class CalibratedDataPublisher(object):
         
         # define twist in quaternion form 
         twist = np.array([transform_quat[0], projection[0], projection[1], projection[2]])
+        twist /= td.quaternions.qnorm(twist)
+        
         # catching singularities
-        if td.quaternions.qnorm(twist) == 0:
-            print("singularity")
+        threshold = 1e-6
+        if np.linalg.norm(twist[1:]) < threshold:
+            print("Singularity")
             return
-
+    
         twist_axis, twist_theta = td.quaternions.quat2axangle(twist)
-        if twist_axis.all() != axis.all():
-            print("axis of rotation is not given axis. something went wrong")
+        if not np.allclose(twist_axis, axis):
+            print("Axis of rotation is not the given axis. Something went wrong.")
             return
         
         if dot_product < 0.0:
