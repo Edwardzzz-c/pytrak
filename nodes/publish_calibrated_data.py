@@ -14,8 +14,12 @@ class CalibratedDataPublisher(object):
         listener = tf2_ros.TransformListener(self.tfBuffer)
         self.calibrated_joint_angle = rospy.Publisher('calibrated_joint_angle', std_msgs.msg.String, queue_size = 1)
         self.timer = rospy.Timer(rospy.Duration(0.01), self.timer_callback)
-        #self.joint_angle_info = {"mcp_angles" : [], "dip_angles" : []}
-
+        self.s1_neutral_pose = self.calibration_info["sensor_1_neutral_pose"]
+        self.s2_neutral_pose = self.calibration_info["sensor_2_neutral_pose"]
+        self.joint_axis = self.calibration_info["joint_axis"]
+        self.mcp_w = rospy.Publisher('mcp_w', std_msgs.msg.Float32, queue_size = 1)
+        self.pip_w = rospy.Publisher('pip_w', std_msgs.msg.Float32, queue_size = 1)
+    
     def load_file(self, filename):
         '''
         Loads in the calibration information stored in dictionary `calibration_information`.
@@ -39,27 +43,25 @@ class CalibratedDataPublisher(object):
         
         if s1_raw_transform is None: return
         if s2_raw_transform is None: return
-        
-        s1_neutral_pose = self.calibration_info["sensor_1_neutral_pose"]
-        s2_neutral_pose = self.calibration_info["sensor_2_neutral_pose"]
-        joint_axis = self.calibration_info["joint_axis"]
 
-        mcp_angle = self.calculate_relative_angle(s1_neutral_pose, s1_raw_transform, joint_axis)
-        dip_angle = self.calculate_relative_angle(s2_neutral_pose, s2_raw_transform, joint_axis) - mcp_angle
-
-        # Saves joint angles to dictionary `joint_angle_info`
-        #self.joint_angle_info["mcp_angles"].append(mcp_angle)
-        #self.joint_angle_info["dip_angles"].append(dip_angle)
+        mcp_angle, mcp_w = self.calculate_relative_angle(self.s1_neutral_pose, s1_raw_transform, self.joint_axis)
+        pip_angle, pip_w = self.calculate_relative_angle(self.s2_neutral_pose, s2_raw_transform, self.joint_axis) # - mcp_angle
 
         # Publish the angle to ROS
         msg = std_msgs.msg.String()
-        msg.data = "MCP : %s, DIP: %s"%(str(mcp_angle)[:7], str(dip_angle)[:7])
+        msg.data = "MCP : %s, DIP: %s"%(str(mcp_angle)[:7], str(pip_angle)[:7])
         self.calibrated_joint_angle.publish(msg)
+
+        # Publish the w to ROS to ensure that there's no quaternion flipping happening
+        mcp_msg = std_msgs.msg.Float32()
+        pip_msg = std_msgs.msg.Float32()
+        mcp_msg.data = mcp_w
+        pip_msg.data = pip_w
+        self.mcp_w.publish(mcp_msg)
+        self.pip_w.publish(pip_msg)
     
-    def twist_rotation_about_axis(self, transform, axis):
+    def twist_rotation_about_axis(self, transform_quat, axis):
         # quaternion convention is [w, x, y, z]
-        transform_rot = transform[:3, :3]
-        transform_quat = td.quaternions.mat2quat(transform_rot)
         transform_axes = np.array([transform_quat[1], transform_quat[2], transform_quat[3]])
         
         dot_product = np.dot(transform_axes, axis)
@@ -90,11 +92,13 @@ class CalibratedDataPublisher(object):
             return twist_theta
         
     def calculate_relative_angle(self, reference_transform, target_transform, axis):
-
-        relative_transform = np.dot(np.linalg.inv(reference_transform), target_transform)
-        theta = self.twist_rotation_about_axis(relative_transform, axis)*(180/np.pi)
         
-        return theta
+        relative_transform = np.dot(np.linalg.inv(reference_transform), target_transform)
+        relative_transform_quat = td.quaternions.mat2quat(relative_transform[:3, :3])
+        theta = self.twist_rotation_about_axis(relative_transform_quat, axis)*(180/np.pi)
+
+        # collecting the w value of quaternion for debugging. 
+        return theta, relative_transform_quat[0]
     
     def save_sensor_information(self, outfile):
         '''
