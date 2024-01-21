@@ -56,7 +56,7 @@ class CalibratedDataPublisher(object):
         msg.data = "MCP : %s, DIP: %s"%(str(mcp_angle)[:7], str(dip_angle)[:7])
         self.calibrated_joint_angle.publish(msg)
     
-    def rotation_about_axis(self, transform, axis):
+    def twist_rotation_about_axis(self, transform, axis):
         # quaternion convention is [w, x, y, z]
         transform_rot = transform[:3, :3]
         transform_quat = td.quaternions.mat2quat(transform_rot)
@@ -66,7 +66,7 @@ class CalibratedDataPublisher(object):
         axis_norm = np.linalg.norm(axis)
         projection = (dot_product / axis_norm**2) * axis 
         
-        # define twist in quaternion form 
+        # define twist in quaternion form and normalize
         twist = np.array([transform_quat[0], projection[0], projection[1], projection[2]])
         twist /= td.quaternions.qnorm(twist)
         
@@ -92,7 +92,7 @@ class CalibratedDataPublisher(object):
     def calculate_relative_angle(self, reference_transform, target_transform, axis):
 
         relative_transform = np.dot(np.linalg.inv(reference_transform), target_transform)
-        theta = self.rotation_about_axis(relative_transform, axis)*(180/np.pi)
+        theta = self.twist_rotation_about_axis(relative_transform, axis)*(180/np.pi)
         
         return theta
     
