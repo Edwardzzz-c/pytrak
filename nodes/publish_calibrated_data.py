@@ -73,7 +73,10 @@ class CalibratedDataPublisher(object):
         # catching singularities
         threshold = 1e-6
         if td.quaternions.qnorm(twist) < threshold:
-            print("Singularity")
+            print("Singularity in twist")
+            return
+        elif td.quaternions.qnorm(transform_quat) < threshold:
+            print("Singularity in rotation")
             return
     
         twist_axis, twist_theta = td.quaternions.quat2axangle(twist)
