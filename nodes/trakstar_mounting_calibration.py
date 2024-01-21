@@ -34,7 +34,6 @@ class Calibrator(object):
 		points = np.zeros((n, 3))
 		
 		for i, transform in enumerate(data):
-			transform = np.linalg.inv(transform)
 			translation = transform[:3, 3]
 			points[i, :3] = translation
 
@@ -50,6 +49,7 @@ class Calibrator(object):
 		Saves calibration information dictionary, `calibration_info`, into a file. 
 		'''
 		sensor_2_sweeping_poses = self.sweeping_poses["sensor_2"]
+		print(len(sensor_2_sweeping_poses))
 		joint_axis = self.get_pca_least_var_axis(sensor_2_sweeping_poses)
 
 		# re-orient joint-axis to get correct direction from Sensor 0 to Sensor 1
