@@ -16,9 +16,14 @@ class CalibratedDataPublisher(object):
         self.timer = rospy.Timer(rospy.Duration(0.01), self.timer_callback)
         self.s1_neutral_pose = self.calibration_info["sensor_1_neutral_pose"]
         self.s2_neutral_pose = self.calibration_info["sensor_2_neutral_pose"]
+        
         self.joint_axis = self.calibration_info["joint_axis"]
-        self.mcp_w = rospy.Publisher('mcp_w', std_msgs.msg.Float32, queue_size = 1)
-        self.pip_w = rospy.Publisher('pip_w', std_msgs.msg.Float32, queue_size = 1)
+        self.mcp_axis = np.dot(np.linalg.inv(self.s1_neutral_pose[:3, :3]), self.joint_axis)
+        self.pip_axis = np.dot(np.linalg.inv(self.s2_neutral_pose[:3, :3]), self.joint_axis)
+
+        self.mcp_neutral_pose = self.get_transform("sensor_1")
+        self.pip_neutral_pose = self.get_transform("sensor_2")
+    
     
     def load_file(self, filename):
         '''
@@ -35,7 +40,7 @@ class CalibratedDataPublisher(object):
 
     def timer_callback(self, timer):
         '''
-        Gets transforms from Trakstar and publishes the joint angle to `\calibrated_joint_angle.`
+        Gets transforms from Trakstar and publishes the joint angle to `/calibrated_joint_angle.`
         '''
         # Collect the raw sensor 0 to sensor 1 transform and the raw sensor 0 to sensor 1 transform
         s1_raw_transform = self.get_transform("sensor_1")
@@ -44,24 +49,20 @@ class CalibratedDataPublisher(object):
         if s1_raw_transform is None: return
         if s2_raw_transform is None: return
 
-        mcp_angle, mcp_w = self.calculate_relative_angle(self.s1_neutral_pose, s1_raw_transform, self.joint_axis)
-        pip_angle, pip_w = self.calculate_relative_angle(self.s2_neutral_pose, s2_raw_transform, self.joint_axis) # - mcp_angle
+        mcp_angle = self.calculate_relative_angle(self.mcp_neutral_pose, s1_raw_transform, self.mcp_axis)
+        pip_angle = self.calculate_relative_angle(self.pip_neutral_pose, s2_raw_transform, self.pip_axis) - mcp_angle
 
         # Publish the angle to ROS
         msg = std_msgs.msg.String()
         msg.data = "MCP : %s, DIP: %s"%(str(mcp_angle)[:7], str(pip_angle)[:7])
         self.calibrated_joint_angle.publish(msg)
-
-        # Publish the w to ROS to ensure that there's no quaternion flipping happening
-        mcp_msg = std_msgs.msg.Float32()
-        pip_msg = std_msgs.msg.Float32()
-        mcp_msg.data = mcp_w
-        pip_msg.data = pip_w
-        self.mcp_w.publish(mcp_msg)
-        self.pip_w.publish(pip_msg)
     
-    def twist_rotation_about_axis(self, transform_quat, axis):
+    def twist_rotation_about_axis(transform, axis):
+        '''
+        Returns the angle theta in degrees about the twist axis. 
+        '''
         # quaternion convention is [w, x, y, z]
+        transform_quat = td.quaternions.mat2quat(transform[:3, :3])
         transform_axes = np.array([transform_quat[1], transform_quat[2], transform_quat[3]])
         
         dot_product = np.dot(transform_axes, axis)
@@ -80,25 +81,28 @@ class CalibratedDataPublisher(object):
         elif td.quaternions.qnorm(transform_quat) < threshold:
             print("Singularity in rotation")
             return
-    
-        twist_axis, twist_theta = td.quaternions.quat2axangle(twist)
-        if not np.allclose(twist_axis, axis):
-            print("Axis of rotation is not the given axis. Something went wrong.")
-            return
         
-        if dot_product < 0.0:
-            return -1*twist_theta
-        else:
-            return twist_theta
+        if dot_product < 0:
+            twist = -1*twist
+        
+        #swing = td.quaternions.qmult(transform_quat, td.quaternions.qconjugate(twist))
+        #swing /= td.quaternions.qnorm(twist)
+        
+        twist_axis, twist_theta = td.quaternions.quat2axangle(twist)
+    
+        if not np.allclose(axis, twist_axis):
+            print("Axis of rotation is not the given axis. Something went wrong.")
+            print("twist axis: %s"%(twist_axis))
+            print("pca axis  : %s"%(axis))
+        
+        return twist_theta*(180/np.pi)
         
     def calculate_relative_angle(self, reference_transform, target_transform, axis):
         
         relative_transform = np.dot(np.linalg.inv(reference_transform), target_transform)
-        relative_transform_quat = td.quaternions.mat2quat(relative_transform[:3, :3])
-        theta = self.twist_rotation_about_axis(relative_transform_quat, axis)*(180/np.pi)
-
-        # collecting the w value of quaternion for debugging. 
-        return theta, relative_transform_quat[0]
+        theta = self.twist_rotation_about_axis(relative_transform, axis)
+        
+        return theta
     
     def save_sensor_information(self, outfile):
         '''
