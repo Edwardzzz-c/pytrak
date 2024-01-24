@@ -10,11 +10,11 @@ import argparse
 import numpy as np
 import re
 import functools as ft
+from pathlib import Path  
 
 class RosbagParser(object):
     def __init__(self):
         self.topic_data = {}
-        self.condition = False
 
     def filter_time(self, t):
         ros_time = rospy.Time(t.secs, t.nsecs)
@@ -24,11 +24,18 @@ class RosbagParser(object):
 
         return formatted_time
 
-    def rosbag_parser(self, filepath, folder, topics):
+    def rosbag_parser(self, filepath, folder, topics, file):
         try:
-            total_path = filepath + folder + '/*'
-            files = glob.glob(total_path)
-            print(files)
+            if len(folder) > 0:
+                folder = folder + '/'
+
+            self.total_path = filepath + folder
+
+            if len(file) > 0:
+                files = glob.glob(self.total_path + file)
+            else:
+                files = glob.glob(self.total_path + '*')
+
             self.topics = [topic_name for topic_name in topics.split(' ')]
 
         except IOError:
@@ -42,13 +49,12 @@ class RosbagParser(object):
             bag = rosbag.Bag(file)
             
             print("Parsed file %s of %s total files."%(i+1, len(files)))
-            file_name = file[len(filepath + folder + '/'):]
+            file_name = file[len(filepath + folder):]
             condition = re.findall("\d[_]([a-z_+]+)[_]\d", file_name)
+
             if len(condition) == 0:
                 condition = "not_recorded"
-            else:
-                self.condition = True
-                    
+
             for topic, msg, t in bag.read_messages(topics=self.topics):
                 
                 if topic == '/tf':
@@ -58,7 +64,7 @@ class RosbagParser(object):
                         {'condition': condition, 
                          'raw_time': t,
                          'time': formatted_time,
-                         'trakstar0': str(msg.transforms[1].transform),
+                         'trakstar0': str(msg.transforms[0].transform),
                          'trakstar1': str(msg.transforms[1].transform),
                          'trakstar2': str(msg.transforms[2].transform)}
                     )
@@ -102,41 +108,49 @@ class RosbagParser(object):
 
         print("Finished parsing data.")
 
-    def save_data(self, filepath, folder, patient):
+    def save_data(self, name):
         print("Saving data...")
+        if len(name) > 0:
+            name = name + '_'
 
-        if '/tf' in self.topics:
+        if '/tf' in self.topics and len(self.topics) > 1:
             trakstar_df = pd.DataFrame(self.topic_data['/tf'])
             subtopics = self.topics.copy()
             subtopics.remove('/tf')
 
             for topic in subtopics:
                 df = pd.DataFrame(self.topic_data[topic])
-                if self.condition == False:
-                    df.drop(columns = ['condition', 'raw_time'], inplace = True)
+                df.drop(columns = ['condition', 'raw_time'], inplace = True)
                 trakstar_df = trakstar_df.merge(df, on='time', how='left')
 
-            trakstar_df.to_csv('~/' + filepath + folder + '/' + patient + '_compiled_data.csv')
+            filepath = Path('~/' + self.total_path + name + 'compiled_data.csv')  
+            filepath.parent.mkdir(parents=True, exist_ok=True)  
+            trakstar_df.to_csv(filepath)
 
             print("Saved data parsing file.")
 
         else:
             for i, topic in enumerate(self.topics):
                 df = pd.DataFrame(self.topic_data[topic])
-                df.to_csv('~/' + filepath + folder + '/' + patient + '_' + topic + '_data.csv')
+                tp = re.sub("/", "_", topic[1:])
+                filepath = Path('~/' + self.total_path + name + tp + "_data.csv")  
+                filepath.parent.mkdir(parents=True, exist_ok=True)  
+                print(filepath)
+                df.to_csv(filepath) 
             
                 print("Saved %s : %s of %s topics parsed."%(topic, i+1, len(self.topics)))
 
 def main(args):
     ros_bag = RosbagParser()
-    ros_bag.rosbag_parser(args.filepath, args.folder, args.topics)
-    ros_bag.save_data(args.filepath, args.folder, args.patient)
+    ros_bag.rosbag_parser(args.filepath, args.folder, args.topics, args.file)
+    ros_bag.save_data(args.name)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--filepath', type=str, default = 'hand_orthosis_ws/src/trakstar_ros/collected_data/rosbag/')
-    parser.add_argument('--patient', type=str)
-    parser.add_argument('--folder', type=str)
+    parser.add_argument('--name', type=str, default = '')
+    parser.add_argument('--folder', type=str, default = '')
+    parser.add_argument('--file', type=str, default = '')
     parser.add_argument('--topics', type=str, default = "/tf /futek /arduino_DCmotor/button /arduino_DCmotor/feedback /hand_event")
 
     main(parser.parse_args())
