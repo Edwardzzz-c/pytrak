@@ -46,7 +46,7 @@
   </node>
 
   <node pkg="rosbag" type="record" name="trakstar_bag" 
-        args="--split --duration=5m -o $(find trakstar)/collected_data/rosbag/demohand.bag /tf /futek /raw_emg /arduino_DCmotor/button /arduino_DCmotor/feedback/position1" 
+        args="--split --duration=5m -o $(find trakstar)/collected_data/rosbag/p1.bag /tf /futek /raw_emg /arduino_DCmotor/button /arduino_DCmotor/feedback /hand_event" 
     />
 
 </launch>

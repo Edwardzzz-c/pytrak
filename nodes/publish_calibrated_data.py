@@ -14,15 +14,6 @@ class CalibratedDataPublisher(object):
         listener = tf2_ros.TransformListener(self.tfBuffer)
         self.calibrated_joint_angle = rospy.Publisher('calibrated_joint_angle', std_msgs.msg.String, queue_size = 1)
         self.timer = rospy.Timer(rospy.Duration(0.01), self.timer_callback)
-        self.s1_neutral_pose = self.calibration_info["sensor_1_neutral_pose"]
-        self.s2_neutral_pose = self.calibration_info["sensor_2_neutral_pose"]
-        
-        self.joint_axis = self.calibration_info["joint_axis"]
-        self.mcp_axis = np.dot(np.linalg.inv(self.s1_neutral_pose[:3, :3]), self.joint_axis)
-        self.pip_axis = np.dot(np.linalg.inv(self.s2_neutral_pose[:3, :3]), self.joint_axis)
-
-        self.mcp_neutral_pose = self.get_transform("sensor_1")
-        self.pip_neutral_pose = self.get_transform("sensor_2")
     
     
     def load_file(self, filename):
@@ -33,6 +24,17 @@ class CalibratedDataPublisher(object):
         try:
             file = open(filename, 'rb')
             self.calibration_info = pickle.load(file)
+            
+            self.s1_neutral_pose = self.calibration_info["sensor_1_neutral_pose"]
+            self.s2_neutral_pose = self.calibration_info["sensor_2_neutral_pose"]
+            
+            self.joint_axis = self.calibration_info["joint_axis"]
+            self.mcp_axis = np.dot(np.linalg.inv(self.s1_neutral_pose[:3, :3]), self.joint_axis)
+            self.pip_axis = np.dot(np.linalg.inv(self.s2_neutral_pose[:3, :3]), self.joint_axis)
+
+            self.mcp_neutral_pose = self.get_transform("sensor_1")
+            self.pip_neutral_pose = self.get_transform("sensor_2")
+
         except IOError:
             print("Failed to read file")
             return False
@@ -57,7 +59,7 @@ class CalibratedDataPublisher(object):
         msg.data = "MCP : %s, DIP: %s"%(str(mcp_angle)[:7], str(pip_angle)[:7])
         self.calibrated_joint_angle.publish(msg)
     
-    def twist_rotation_about_axis(transform, axis):
+    def twist_rotation_about_axis(self, transform, axis):
         '''
         Returns the angle theta in degrees about the twist axis. 
         '''
@@ -100,8 +102,10 @@ class CalibratedDataPublisher(object):
     def calculate_relative_angle(self, reference_transform, target_transform, axis):
         
         relative_transform = np.dot(np.linalg.inv(reference_transform), target_transform)
-        theta = self.twist_rotation_about_axis(relative_transform, axis)
-        
+        target_theta = self.twist_rotation_about_axis(relative_transform, axis)
+        delta = abs(target_theta)
+        theta = min(delta, 360-delta)
+
         return theta
     
     def save_sensor_information(self, outfile):

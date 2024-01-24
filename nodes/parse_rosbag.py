@@ -9,87 +9,134 @@ import transforms3d as td
 import argparse
 import numpy as np
 import re
+import functools as ft
 
 class RosbagParser(object):
     def __init__(self):
-        self.futek_list = []
-        self.trakstar_list = []
+        self.topic_data = {}
+        self.condition = False
 
-    def rosbag_parser(self, filepath):
+    def filter_time(self, t):
+        ros_time = rospy.Time(t.secs, t.nsecs)
+        timestamp = ros_time.to_sec()
+        date_time = datetime.utcfromtimestamp(round(timestamp, 2))
+        formatted_time = date_time.strftime("%Y-%m-%d %H:%M:%S.%f")[:-4]
+
+        return formatted_time
+
+    def rosbag_parser(self, filepath, folder, topics):
         try:
-            files = glob.glob(filepath + '/*')
-            bag = rosbag.Bag(files[0])
+            total_path = filepath + folder + '/*'
+            files = glob.glob(total_path)
+            print(files)
+            self.topics = [topic_name for topic_name in topics.split(' ')]
+
         except IOError:
             print("Failed to open files")
             return False
 
+        for topic in self.topics:
+            self.topic_data[topic] = []
+
         for i, file in enumerate(files): 
             bag = rosbag.Bag(file)
-            print("File %s of %s total files."%(i+1, len(files)))
-            topics = ['/tf', '/futek']
-            condition = re.findall("\d[_]([a-z_+]+)[_]\d", file)
             
-            for topic, msg, t in bag.read_messages(topics=topics):
-
-                if topic == '/tf':
-                    ros_time = rospy.Time(t.secs, t.nsecs)
-                    timestamp = ros_time.to_sec()
-                    date_time = datetime.utcfromtimestamp(round(timestamp, 2))
-                    formatted_time = date_time.strftime("%Y-%m-%d %H:%M:%S.%f")[:-4]
+            print("Parsed file %s of %s total files."%(i+1, len(files)))
+            file_name = file[len(filepath + folder + '/'):]
+            condition = re.findall("\d[_]([a-z_+]+)[_]\d", file_name)
+            if len(condition) == 0:
+                condition = "not_recorded"
+            else:
+                self.condition = True
                     
-                    T_0 = self.to_affine(msg.transforms[0])
-                    T_1 = self.to_affine(msg.transforms[1])
-                    T_2 = self.to_affine(msg.transforms[2])
-            
-                    self.trakstar_list.append(
+            for topic, msg, t in bag.read_messages(topics=self.topics):
+                
+                if topic == '/tf':
+                    formatted_time = self.filter_time(t)
+                    
+                    self.topic_data[topic].append(
                         {'condition': condition, 
                          'raw_time': t,
                          'time': formatted_time,
-                         'sensor_0': T_0,
-                         'sensor_1': T_1,
-                         'sensor_2': T_2}
+                         'trakstar0': str(msg.transforms[1].transform),
+                         'trakstar1': str(msg.transforms[1].transform),
+                         'trakstar2': str(msg.transforms[2].transform)}
                     )
                 elif topic == '/futek':
-                    ros_time = rospy.Time(t.secs, t.nsecs)
-                    timestamp = ros_time.to_sec()
-                    date_time = datetime.utcfromtimestamp(round(timestamp, 2))
-                    formatted_time = date_time.strftime("%Y-%m-%d %H:%M:%S.%f")[:-4]
+                    formatted_time = self.filter_time(t)
                     
                     force = msg.load
-                    self.futek_list.append(
+                    self.topic_data[topic].append(
                         {'condition': condition, 
                          'raw_time': t,
                          'time': formatted_time,
-                         'force': force}
+                         'futek': force}
                     )
+                elif topic == '/arduino_DCmotor/feedback':
+                    formatted_time = self.filter_time(t)
+                    motor_pos = msg.position1
+                    self.topic_data[topic].append(
+                        {'condition': condition, 
+                         'raw_time': t,
+                         'time': formatted_time,
+                         'motor_position': motor_pos}
+                    )
+                elif topic == '/arduino_DCmotor/button':
+                    formatted_time = self.filter_time(t)
+                    button = msg.data
+                    self.topic_data[topic].append(
+                        {'condition': condition, 
+                         'raw_time': t,
+                         'time': formatted_time,
+                         'button': button}
+                    )
+                elif topic == '/hand_event':
+                    formatted_time = self.filter_time(t)
+                    hand_event = msg.data
+                    self.topic_data[topic].append(
+                        {'condition': condition, 
+                         'raw_time': t,
+                         'time': formatted_time,
+                         'hand_event': hand_event}
+                    )
+
         print("Finished parsing data.")
 
-    def save_data(self, path, filename):
-        print("saving data")
-        trakstar_df = pd.DataFrame(self.trakstar_list)
-        futek_df = pd.DataFrame(self.futek_list)
-        df = trakstar_df.merge(futek_df, on='time', how='left')
-        df.to_csv(path + '/' + filename + '.csv')
-        print("Saved data parsing file.")
+    def save_data(self, filepath, folder, patient):
+        print("Saving data...")
 
-    def to_affine(self, t):
-        '''
-        Returns the 4x4 homogenous transform from the Transform message. 
-        '''
-        T = [t.transform.translation.x, t.transform.translation.y, t.transform.translation.z]
-        rotation = [t.transform.rotation.w, t.transform.rotation.x, t.transform.rotation.y, t.transform.rotation.z]
-        R = td.quaternions.quat2mat(rotation)
-        Z = np.ones(3)
+        if '/tf' in self.topics:
+            trakstar_df = pd.DataFrame(self.topic_data['/tf'])
+            subtopics = self.topics.copy()
+            subtopics.remove('/tf')
 
-        return td.affines.compose(T, R, Z)
+            for topic in subtopics:
+                df = pd.DataFrame(self.topic_data[topic])
+                if self.condition == False:
+                    df.drop(columns = ['condition', 'raw_time'], inplace = True)
+                trakstar_df = trakstar_df.merge(df, on='time', how='left')
+
+            trakstar_df.to_csv('~/' + filepath + folder + '/' + patient + '_compiled_data.csv')
+
+            print("Saved data parsing file.")
+
+        else:
+            for i, topic in enumerate(self.topics):
+                df = pd.DataFrame(self.topic_data[topic])
+                df.to_csv('~/' + filepath + folder + '/' + patient + '_' + topic + '_data.csv')
+            
+                print("Saved %s : %s of %s topics parsed."%(topic, i+1, len(self.topics)))
 
 def main(args):
     ros_bag = RosbagParser()
-    ros_bag.rosbag_parser(args.filepath)
-    ros_bag.save_data(args.filepath, args.outfile)
+    ros_bag.rosbag_parser(args.filepath, args.folder, args.topics)
+    ros_bag.save_data(args.filepath, args.folder, args.patient)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--filepath', type=str)
-    parser.add_argument('--outfile', type=str, default = 'data')
+    parser.add_argument('--filepath', type=str, default = 'hand_orthosis_ws/src/trakstar_ros/collected_data/rosbag/')
+    parser.add_argument('--patient', type=str)
+    parser.add_argument('--folder', type=str)
+    parser.add_argument('--topics', type=str, default = "/tf /futek /arduino_DCmotor/button /arduino_DCmotor/feedback /hand_event")
+
     main(parser.parse_args())

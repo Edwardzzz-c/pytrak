@@ -3,19 +3,19 @@
 2. rosbags recording for each experimental condition (initial passive, active, final passive)
 3. rosbag of calibration collection before each experimental condition 
 
-p7_passive_start
-p7_active
-p7_passive_end
+p1_passive_start
+p1_active
+p1_passive_end
 
-p7_passive_start_calibration
-p7_active_calibration
-p7_passive_end_calibration
+p1_passive_start_calibration
+p1_active_calibration
+p1_passive_end_calibration
 
-rosbag record --split --duration=5m -o trakstar_ros/collected_data/rosbag/p7_rosbags/p7_passive_start_calibration /raw_emg /tf /futek /arduino_DCmotor/button /arduino_DCmotor/feedback/position1
-rosbag record --split --duration=5m -o trakstar_ros/collected_data/rosbag/p7_rosbags/p7_passive_start /raw_emg /tf /futek /arduino_DCmotor/button /arduino_DCmotor/feedback/position1
+rosbag record --split --duration=5m -o ~/hand_orthosis_ws/src/trakstar_ros/collected_data/rosbag/p1_rosbags/p1_passive_start_calibration /raw_emg /tf /futek /arduino_DCmotor/button /arduino_DCmotor/feedback /hand_event
+rosbag record --split --duration=5m -o ~/hand_orthosis_ws/src/trakstar_ros/collected_data/rosbag/p1_rosbags/p1_passive_start /raw_emg /tf /futek /arduino_DCmotor/button /arduino_DCmotor/feedback /hand_event
 
-rosbag record --split --duration=5m -o trakstar_ros/collected_data/rosbag/p7_rosbags/p7_active_calibration /raw_emg /tf /futek /arduino_DCmotor/button /arduino_DCmotor/feedback/position1
-rosbag record --split --duration=5m -o trakstar_ros/collected_data/rosbag/p7_rosbags/p7_active /raw_emg /tf /futek /arduino_DCmotor/button /arduino_DCmotor/feedback/position1
+rosbag record --split --duration=5m -o ~/hand_orthosis_ws/src/trakstar_ros/collected_data/rosbag/p1_rosbags/p1_active_calibration /raw_emg /tf /futek /arduino_DCmotor/button /arduino_DCmotor/feedback /hand_event
+rosbag record --split --duration=5m -o ~/hand_orthosis_ws/src/trakstar_ros/collected_data/rosbag/p1_rosbags/p1_active /raw_emg /tf /futek /arduino_DCmotor/button /arduino_DCmotor/feedback /hand_event
 
-rosbag record --split --duration=5m -o trakstar_ros/collected_data/rosbag/p7_rosbags/p7_passive_end_calibration /raw_emg /tf /futek /arduino_DCmotor/button /arduino_DCmotor/feedback/position1
-rosbag record --split --duration=5m -o trakstar_ros/collected_data/rosbag/p7_rosbags/p7_passive_end /raw_emg /tf /futek /arduino_DCmotor/button /arduino_DCmotor/feedback/position1
+rosbag record --split --duration=5m -o ~/hand_orthosis_ws/src/trakstar_ros/collected_data/rosbag/p1_rosbags/p1_passive_end_calibration /raw_emg /tf /futek /arduino_DCmotor/button /arduino_DCmotor/feedback /hand_event
+rosbag record --split --duration=5m -o ~/hand_orthosis_ws/src/trakstar_ros/collected_data/rosbag/p1_rosbags/p1_passive_end /raw_emg /tf /futek /arduino_DCmotor/button /arduino_DCmotor/feedback /hand_event
