@@ -1,3 +1,0 @@
-
-
-rosbag record --split --duration=5m -o ~/hand_orthosis_ws/src/trakstar_ros/collected_data/rosbag/calibration_testing /tf

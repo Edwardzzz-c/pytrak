@@ -11,11 +11,37 @@ p1_passive_start_calibration
 p1_active_calibration
 p1_passive_end_calibration
 
-rosbag record --split --duration=5m -o ~/hand_orthosis_ws/src/trakstar_ros/collected_data/rosbag/p1_rosbags/p1_passive_start_calibration /raw_emg /tf /futek /arduino_DCmotor/button /arduino_DCmotor/feedback /hand_event
-rosbag record --split --duration=5m -o ~/hand_orthosis_ws/src/trakstar_ros/collected_data/rosbag/p1_rosbags/p1_passive_start /raw_emg /tf /futek /arduino_DCmotor/button /arduino_DCmotor/feedback /hand_event
 
-rosbag record --split --duration=5m -o ~/hand_orthosis_ws/src/trakstar_ros/collected_data/rosbag/p1_rosbags/p1_active_calibration /raw_emg /tf /futek /arduino_DCmotor/button /arduino_DCmotor/feedback /hand_event
-rosbag record --split --duration=5m -o ~/hand_orthosis_ws/src/trakstar_ros/collected_data/rosbag/p1_rosbags/p1_active /raw_emg /tf /futek /arduino_DCmotor/button /arduino_DCmotor/feedback /hand_event
 
-rosbag record --split --duration=5m -o ~/hand_orthosis_ws/src/trakstar_ros/collected_data/rosbag/p1_rosbags/p1_passive_end_calibration /raw_emg /tf /futek /arduino_DCmotor/button /arduino_DCmotor/feedback /hand_event
-rosbag record --split --duration=5m -o ~/hand_orthosis_ws/src/trakstar_ros/collected_data/rosbag/p1_rosbags/p1_passive_end /raw_emg /tf /futek /arduino_DCmotor/button /arduino_DCmotor/feedback /hand_event
+rosbag record --split --duration=5m -o ~/hand_orthosis_ws/src/trakstar_ros/collected_data/rosbag/p3_rosbags/p3_passive_start_calibration /raw_emg /tf /futek /arduino_DCmotor/button /arduino_DCmotor/feedback /hand_event
+rosbag record --split --duration=5m -o ~/hand_orthosis_ws/src/trakstar_ros/collected_data/rosbag/p3_rosbags/p3_passive_start /raw_emg /tf /futek /arduino_DCmotor/button /arduino_DCmotor/feedback /hand_event
+
+rosbag record --split --duration=5m -o ~/hand_orthosis_ws/src/trakstar_ros/collected_data/rosbag/p3_rosbags/p3_active_calibration /raw_emg /tf /futek /arduino_DCmotor/button /arduino_DCmotor/feedback /hand_event
+rosbag record --split --duration=5m -o ~/hand_orthosis_ws/src/trakstar_ros/collected_data/rosbag/p3_rosbags/p3_active_training /raw_emg /tf /futek /arduino_DCmotor/button /arduino_DCmotor/feedback /hand_event
+
+rosbag record --split --duration=5m -o ~/hand_orthosis_ws/src/trakstar_ros/collected_data/rosbag/p3_rosbags/p3_active_rorcr1 /raw_emg /tf /futek /arduino_DCmotor/button /arduino_DCmotor/feedback /hand_event
+rosbag record --split --duration=5m -o ~/hand_orthosis_ws/src/trakstar_ros/collected_data/rosbag/p3_rosbags/p3_active_cube /raw_emg /tf /futek /arduino_DCmotor/button /arduino_DCmotor/feedback /hand_event
+rosbag record --split --duration=5m -o ~/hand_orthosis_ws/src/trakstar_ros/collected_data/rosbag/p3_rosbags/p3_active_rorcr2 /raw_emg /tf /futek /arduino_DCmotor/button /arduino_DCmotor/feedback /hand_event
+
+rosbag record --split --duration=5m -o ~/hand_orthosis_ws/src/trakstar_ros/collected_data/rosbag/p3_rosbags/p3_passive_end_calibration /raw_emg /tf /futek /arduino_DCmotor/button /arduino_DCmotor/feedback /hand_event
+rosbag record --split --duration=5m -o ~/hand_orthosis_ws/src/trakstar_ros/collected_data/rosbag/p3_rosbags/p3_passive_end /raw_emg /tf /futek /arduino_DCmotor/button /arduino_DCmotor/feedback /hand_event
+
+
+        if '/tf' in self.topics and len(self.topics) > 1:
+            trakstar_df = pd.DataFrame(self.topic_data['/tf'])
+            subtopics = self.topics.copy()
+            subtopics.remove('/tf')
+            print(trakstar_df.columns)
+            for topic in subtopics:
+                df = pd.DataFrame(self.topic_data[topic])
+                print(topic)
+                df.drop(columns = ['condition', 'raw_time'], inplace = True)
+                print(df.columns)
+                print(trakstar_df.columns)
+                trakstar_df = trakstar_df.merge(df, on='time', how='left')
+
+            filepath = Path(self.total_path + name + 'compiled_data.csv')  
+            filepath.parent.mkdir(parents=False, exist_ok=True)  
+            trakstar_df.to_csv(filepath)
+
+            print("Saved data parsing file.")

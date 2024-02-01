@@ -22,7 +22,7 @@ class RosbagParser(object):
         date_time = datetime.utcfromtimestamp(round(timestamp, 2))
         formatted_time = date_time.strftime("%Y-%m-%d %H:%M:%S.%f")[:-4]
 
-        return formatted_time
+        return timestamp, formatted_time
 
     def rosbag_parser(self, filepath, folder, topics, file):
         try:
@@ -30,7 +30,6 @@ class RosbagParser(object):
                 folder = folder + '/'
 
             self.total_path = filepath + folder
-
             if len(file) > 0:
                 files = glob.glob(self.total_path + file)
             else:
@@ -50,58 +49,56 @@ class RosbagParser(object):
             
             print("Parsed file %s of %s total files."%(i+1, len(files)))
             file_name = file[len(filepath + folder):]
-            condition = re.findall("\d[_]([a-z_+]+)[_]\d", file_name)
 
+            condition = re.findall("(?<=\d_)(.*?)(?=_2024)", file_name)[0]
             if len(condition) == 0:
                 condition = "not_recorded"
 
             for topic, msg, t in bag.read_messages(topics=self.topics):
-                
+
                 if topic == '/tf':
-                    formatted_time = self.filter_time(t)
-                    
+                    tsec, formatted_time = self.filter_time(t)
                     self.topic_data[topic].append(
                         {'condition': condition, 
-                         'raw_time': t,
+                         'raw_time': tsec,
                          'time': formatted_time,
                          'trakstar0': str(msg.transforms[0].transform),
                          'trakstar1': str(msg.transforms[1].transform),
                          'trakstar2': str(msg.transforms[2].transform)}
                     )
                 elif topic == '/futek':
-                    formatted_time = self.filter_time(t)
-                    
+                    tsec, formatted_time = self.filter_time(t)
                     force = msg.load
                     self.topic_data[topic].append(
                         {'condition': condition, 
-                         'raw_time': t,
+                         'raw_time': tsec,
                          'time': formatted_time,
                          'futek': force}
                     )
                 elif topic == '/arduino_DCmotor/feedback':
-                    formatted_time = self.filter_time(t)
+                    tsec, formatted_time = self.filter_time(t)
                     motor_pos = msg.position1
                     self.topic_data[topic].append(
                         {'condition': condition, 
-                         'raw_time': t,
+                         'raw_time': tsec,
                          'time': formatted_time,
                          'motor_position': motor_pos}
                     )
                 elif topic == '/arduino_DCmotor/button':
-                    formatted_time = self.filter_time(t)
+                    tsec, formatted_time = self.filter_time(t)
                     button = msg.data
                     self.topic_data[topic].append(
                         {'condition': condition, 
-                         'raw_time': t,
+                         'raw_time': tsec,
                          'time': formatted_time,
                          'button': button}
                     )
                 elif topic == '/hand_event':
-                    formatted_time = self.filter_time(t)
+                    tsec, formatted_time = self.filter_time(t)
                     hand_event = msg.data
                     self.topic_data[topic].append(
                         {'condition': condition, 
-                         'raw_time': t,
+                         'raw_time': tsec,
                          'time': formatted_time,
                          'hand_event': hand_event}
                     )
@@ -123,8 +120,8 @@ class RosbagParser(object):
                 df.drop(columns = ['condition', 'raw_time'], inplace = True)
                 trakstar_df = trakstar_df.merge(df, on='time', how='left')
 
-            filepath = Path('~/' + self.total_path + name + 'compiled_data.csv')  
-            filepath.parent.mkdir(parents=True, exist_ok=True)  
+            filepath = Path(self.total_path + name + 'compiled_data.csv')  
+            filepath.parent.mkdir(parents=False, exist_ok=True)  
             trakstar_df.to_csv(filepath)
 
             print("Saved data parsing file.")
@@ -135,7 +132,6 @@ class RosbagParser(object):
                 tp = re.sub("/", "_", topic[1:])
                 filepath = Path('~/' + self.total_path + name + tp + "_data.csv")  
                 filepath.parent.mkdir(parents=True, exist_ok=True)  
-                print(filepath)
                 df.to_csv(filepath) 
             
                 print("Saved %s : %s of %s topics parsed."%(topic, i+1, len(self.topics)))
@@ -151,6 +147,6 @@ if __name__ == '__main__':
     parser.add_argument('--name', type=str, default = '')
     parser.add_argument('--folder', type=str, default = '')
     parser.add_argument('--file', type=str, default = '')
-    parser.add_argument('--topics', type=str, default = "/tf /futek /arduino_DCmotor/button /arduino_DCmotor/feedback /hand_event")
+    parser.add_argument('--topics', type=str, default = "/tf /futek /arduino_DCmotor/button /arduino_DCmotor/feedback")
 
     main(parser.parse_args())
