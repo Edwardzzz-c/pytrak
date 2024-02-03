@@ -1,18 +1,3 @@
-
-1. background rosbags (5 min splits)
-2. rosbags recording for each experimental condition (initial passive, active, final passive)
-3. rosbag of calibration collection before each experimental condition 
-
-p1_passive_start
-p1_active
-p1_passive_end
-
-p1_passive_start_calibration
-p1_active_calibration
-p1_passive_end_calibration
-
-
-
 rosbag record --split --duration=5m -o ~/hand_orthosis_ws/src/trakstar_ros/collected_data/rosbag/p3_rosbags/p3_passive_start_calibration /raw_emg /tf /futek /arduino_DCmotor/button /arduino_DCmotor/feedback /hand_event
 rosbag record --split --duration=5m -o ~/hand_orthosis_ws/src/trakstar_ros/collected_data/rosbag/p3_rosbags/p3_passive_start /raw_emg /tf /futek /arduino_DCmotor/button /arduino_DCmotor/feedback /hand_event
 
