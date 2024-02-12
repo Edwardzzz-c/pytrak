@@ -8,7 +8,6 @@ Instructions for installing first time:
   1. make sure libusb-1.0-0-dev, libusb-dev is installed
   2. copy contents of 'config/99-trakstar.rules' to /lib/udev/rules.d/99-libusb.rules
   3. If libusb is giving you issues, see notes at bottom of https://github.com/ChristophJud/ATC3DGTracker readme.
-
     3.1 run command 'rmmod ehci_hcd'.
     3.2 compile demo script from the installation instructions in https://github.com/ChristophJud/ATC3DGTracker
 
