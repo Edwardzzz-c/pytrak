@@ -36,6 +36,3 @@ rostopic echo /tf -b trak_2023-11-13-19-07-33.bag -p > ~/hand_orthosis_ws/src/tr
 Latest (11/17/2023, KSL): we were able to run on katelyn's machine! Does require configuring libusb to work.
 
 Latest (02/12/2024, JP): we run it in the bimanual manipulation machine. It required steps 3.1 and 3.2.
-
-TODO (AEC): write a script to automatically convert and save rosbag to csv upon close.
-TODO (KSL): get joint angles from transforms.
