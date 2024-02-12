@@ -31,10 +31,6 @@ catkin_package(
 )
 
 catkin_install_python(PROGRAMS 
-    nodes/joint_node.py
-    nodes/calibration_data_collection.py
-    nodes/publish_calibrated_data.py
-    nodes/calibration_information.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 
