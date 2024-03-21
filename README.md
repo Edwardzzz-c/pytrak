@@ -2,19 +2,34 @@
 trakstar_ros
 ---
 
-ros driver for trakstar magnetic tracker
+ROS driver for trakstar magnetic tracker
 
-Instructions for installing first time:
-  1. make sure libusb-1.0-0-dev, libusb-dev is installed
-  2. copy contents of 'config/99-trakstar.rules' to /lib/udev/rules.d/99-libusb.rules.
+---
+
+### Instructions for installing first time*:
+
+  1. make sure libusb-1.0-0-dev and libusb-dev are installed
+```
+sudo apt-get install libusb-1.0-0-dev
+sudo apt-get install libusb-dev
+```
+  2. copy contents of 'config/99-trakstar.rules' to /lib/udev/rules.d/99-libusb.rules:
+  - 2.1 cd into trakstar_ros/config and run:
 ```
 sudo cp 99-trakstar.rules /lib/udev/rules.d/99-libusb.rules
 ```
-  3. If libusb is giving you issues, see notes at bottom of https://github.com/ChristophJud/ATC3DGTracker readme.
+  - 2.2 **reboot**.
+
+  3. If libusb is still giving you issues, see notes at bottom of https://github.com/ChristophJud/ATC3DGTracker readme.
   - 3.1 run command 'rmmod ehci_hcd'.
   - 3.2 compile demo script from the installation instructions in https://github.com/ChristophJud/ATC3DGTracker
 
-Instructions to run (11/10/2023, AEC):
+note: usually steps 1 and 2 are enough
+
+---
+
+### Instructions to run (11/10/2023, AEC):
+
 (make sure trakstar power is on and status light is green; blinking is fine)
 ```
 roscore
@@ -38,4 +53,4 @@ rostopic echo /tf -b trak_2023-11-13-19-07-33.bag -p > ~/hand_orthosis_ws/src/tr
 ---
 Latest (11/17/2023, KSL): we were able to run on katelyn's machine! Does require configuring libusb to work.
 
-Latest (02/12/2024, JP): we run it in the bimanual manipulation machine. It required steps 3.1 and 3.2.
+Latest (02/12/2024, JP): we ran it in the bimanual manipulation machine. It required steps 3.1 and 3.2.
