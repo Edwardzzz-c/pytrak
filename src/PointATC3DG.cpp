@@ -32,9 +32,6 @@
 */
 
 #include "trakstar/PointATC3DG.hpp"
-#include <ros/ros.h>
-#include "ros/console.h"
-#include "ros/assert.h"
 
 #include <cstdio>
 #include <cstdarg>
@@ -158,7 +155,7 @@ PointATC3DG::PointATC3DG() :
     posk = POSK36;
     if( datain[0] == 1 )
         posk = POSK72;
-    ROS_INFO("position scale: %f \n", posk);
+    printf("position scale: %f \n", posk);
 
     check_bird_errors();
 }
@@ -429,36 +426,36 @@ int PointATC3DG::check_bird_errors( void )
     if( datain[0] == 0 ) return 0;
 
     switch( datain[0] ) {
-        case 1:     ROS_ERROR("FATAL(1): System Ram Failure" ); fatal = true; break;
-        case 2:     ROS_ERROR("FATAL(2): Non-Volatile Storage Write Failure" ); fatal = true; break;
-        case 3:     ROS_ERROR("WARNING(3): PCB Configuration Data Corrupt" ); break;
-        case 4:     ROS_ERROR("WARNING(4): Bird Transmitter Calibration Data Corrupt or Not Connected" ); break;
-        case 5:     ROS_ERROR("WARNING(5): Bird Sensor Calibration Data Corrupt or Not Connected" ); break;
-        case 6:     ROS_ERROR("WARNING(6): Invalid RS232 Command" ); break;
-        case 7:     ROS_ERROR("WARNING(7): Not an FBB Master" ); break;
-        case 8:     ROS_ERROR("WARNING(8): No Birds Accessible in Device List" ); break;
-        case 9:     ROS_ERROR("WARNING(9): Bird is Not Initialized" ); break;
-        case 10:    ROS_ERROR("WARNING(10): FBB Serial Port Receive Error - Intra Bird Bus" ); break;
-        case 11:    ROS_ERROR("WARNING(11): RS232 Serial Port Receive Error" ); break;
-        case 12:    ROS_ERROR("WARNING(12): FBB Serial Port Receive Error" ); break;
-        case 13:    ROS_ERROR("WARNING(13): No FBB Command Response" ); break;
-        case 14:    ROS_ERROR("WARNING(14): Invalid FBB Host Command" ); break;
-        case 15:    ROS_ERROR("FATAL(15): FBB Run Time Error" ); fatal = true; break;
-        case 16:    ROS_ERROR("FATAL(16): Invalid CPU Speed" ); fatal = true; break;
-        case 17:    ROS_ERROR("WARNING(17): No FBB Data" ); break;
-        case 18:    ROS_ERROR("WARNING(18): Illegal Baud Rate" ); break;
-        case 19:    ROS_ERROR("WARNING(19): Slave Acknowledge Error" ); break;
+        case 1:     fprintf(stderr, "FATAL(1): System Ram Failure\n" ); fatal = true; break;
+        case 2:     fprintf(stderr, "FATAL(2): Non-Volatile Storage Write Failure\n" ); fatal = true; break;
+        case 3:     fprintf(stderr, "WARNING(3): PCB Configuration Data Corrupt\n" ); break;
+        case 4:     fprintf(stderr, "WARNING(4): Bird Transmitter Calibration Data Corrupt or Not Connected\n" ); break;
+        case 5:     fprintf(stderr, "WARNING(5): Bird Sensor Calibration Data Corrupt or Not Connected\n" ); break;
+        case 6:     fprintf(stderr, "WARNING(6): Invalid RS232 Command\n" ); break;
+        case 7:     fprintf(stderr, "WARNING(7): Not an FBB Master\n" ); break;
+        case 8:     fprintf(stderr, "WARNING(8): No Birds Accessible in Device List\n" ); break;
+        case 9:     fprintf(stderr, "WARNING(9): Bird is Not Initialized\n" ); break;
+        case 10:    fprintf(stderr, "WARNING(10): FBB Serial Port Receive Error - Intra Bird Bus\n" ); break;
+        case 11:    fprintf(stderr, "WARNING(11): RS232 Serial Port Receive Error\n" ); break;
+        case 12:    fprintf(stderr, "WARNING(12): FBB Serial Port Receive Error\n" ); break;
+        case 13:    fprintf(stderr, "WARNING(13): No FBB Command Response\n" ); break;
+        case 14:    fprintf(stderr, "WARNING(14): Invalid FBB Host Command\n" ); break;
+        case 15:    fprintf(stderr, "FATAL(15): FBB Run Time Error\n" ); fatal = true; break;
+        case 16:    fprintf(stderr, "FATAL(16): Invalid CPU Speed\n" ); fatal = true; break;
+        case 17:    fprintf(stderr, "WARNING(17): No FBB Data\n" ); break;
+        case 18:    fprintf(stderr, "WARNING(18): Illegal Baud Rate\n" ); break;
+        case 19:    fprintf(stderr, "WARNING(19): Slave Acknowledge Error\n" ); break;
         case 20: case 21: case 22: case 23:
         case 24: case 25: case 26: case 27:
-            	    ROS_ERROR("FATAL(%d): Intel 80186 CPU Errors", datain[0] ); fatal = true; break;
-        case 28:    ROS_ERROR("WARNING(28): CRT Synchronization" ); break;
-        case 29:    ROS_ERROR("WARNING(29): Transmitter Not Accessible" ); break;
-        case 30:    ROS_ERROR("WARNING(30): Extended Range Transmitter Not Attached" ); break;
-        case 32:    ROS_ERROR("WARNING(32): Sensor Saturated" ); break;
-        case 33:    ROS_ERROR("WARNING(33): Slave Configuration" ); break;
-        case 34:    ROS_ERROR("WARNING(34): Watch Dog Timer" ); break;
-        case 35:    ROS_ERROR("WARNING(35): Over Temperature" ); break;
-        default:    ROS_ERROR("WARNING(%d): Unknown Error Code", datain[0] );
+            	    fprintf(stderr, "FATAL(%d): Intel 80186 CPU Errors\n", datain[0] ); fatal = true; break;
+        case 28:    fprintf(stderr, "WARNING(28): CRT Synchronization\n" ); break;
+        case 29:    fprintf(stderr, "WARNING(29): Transmitter Not Accessible\n" ); break;
+        case 30:    fprintf(stderr, "WARNING(30): Extended Range Transmitter Not Attached\n" ); break;
+        case 32:    fprintf(stderr, "WARNING(32): Sensor Saturated\n" ); break;
+        case 33:    fprintf(stderr, "WARNING(33): Slave Configuration\n" ); break;
+        case 34:    fprintf(stderr, "WARNING(34): Watch Dog Timer\n" ); break;
+        case 35:    fprintf(stderr, "WARNING(35): Over Temperature\n" ); break;
+        default:    fprintf(stderr, "WARNING(%d): Unknown Error Code\n", datain[0] );
     }
 
     if( fatal ) {
@@ -471,12 +468,12 @@ int PointATC3DG::check_bird_errors( void )
 
 void PointATC3DG::error( int val, const char* msg, ... )
 {
-    //va_list ap;
-    //va_start( ap, msg );
-    ROS_ERROR("error(%d): %s \n", val, msg );
-    //ROS_ERRO( stderr, msg, ap );
-    //ROS_ERROR("\n" );
-    //va_end( ap );
+    va_list ap;
+    va_start( ap, msg );
+    fprintf(stderr, "error(%d): ", val );
+    vfprintf( stderr, msg, ap );
+    fprintf(stderr, "\n" );
+    va_end( ap );
     isOk = false;
 }
 

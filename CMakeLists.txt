@@ -1,66 +1,76 @@
-cmake_minimum_required(VERSION 2.8.3)
+cmake_minimum_required(VERSION 3.8)
 project(trakstar)
+
+if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+  add_compile_options(-Wall -Wextra -Wpedantic)
+endif()
 
 if(NOT CMAKE_CONFIGURATION_TYPES AND NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE Release)
 endif()
 
-find_package(catkin REQUIRED COMPONENTS geometry_msgs tf roscpp rospy genmsg)
+# Find dependencies
+find_package(ament_cmake REQUIRED)
+find_package(rclcpp REQUIRED)
+find_package(rclpy REQUIRED)
+find_package(geometry_msgs REQUIRED)
+find_package(std_msgs REQUIRED)
+find_package(tf2 REQUIRED)
+find_package(tf2_ros REQUIRED)
+find_package(tf2_geometry_msgs REQUIRED)
+find_package(rosidl_default_generators REQUIRED)
 
-# include_directories(include ${Boost_INCLUDE_DIR} ${catkin_INCLUDE_DIRS})
+find_package(PkgConfig REQUIRED)
 
-find_package(PkgConfig)
-#pkg_check_modules(PC_LIBUSB REQUIRED libusb-1.0)
-
-add_message_files(
-  FILES
-  TrakstarMsg.msg
+# Generate messages
+rosidl_generate_interfaces(${PROJECT_NAME}
+  "msg/TrakstarMsg.msg"
+  DEPENDENCIES geometry_msgs std_msgs
 )
 
-## Generate added messages and services with any dependencies listed here
- generate_messages(
-   DEPENDENCIES
-   geometry_msgs
-   std_msgs
- )
+# Include directories
+include_directories(include)
 
-catkin_package(
-    INCLUDE_DIRS include
-    LIBRARIES trakstar 
-    CATKIN_DEPENDS geometry_msgs tf
-)
-
-catkin_install_python(PROGRAMS 
-  DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
-)
-
-include_directories(include 
-                    ${catkin_INCLUDE_DIRS} 
-                    )
-
-link_directories(${catkin_LIBRARY_DIRS})
-
-
+# Add subdirectories
 add_subdirectory(src)
 add_subdirectory(tools)
 add_subdirectory(nodes)
 
-install(DIRECTORY include/ DESTINATION include)
+# Install Python executables
+install(PROGRAMS
+  nodes/calibration_data_collection.py
+  nodes/publish_calibrated_data.py
+  nodes/trakstar_mounting_calibration.py
+  DESTINATION lib/${PROJECT_NAME}
+)
 
-install(DIRECTORY launch DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION})
-install(DIRECTORY config DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION})
+# Install directories
+install(DIRECTORY include/
+  DESTINATION include
+)
+
+install(DIRECTORY launch
+  DESTINATION share/${PROJECT_NAME}
+)
+
+install(DIRECTORY config
+  DESTINATION share/${PROJECT_NAME}
+)
 
 # Install udev rules
 option(INSTALL_TRAKSTAR_UDEV_RULES "Install udev rules for Trakstar" ON)
-IF (INSTALL_TRAKSTAR_UDEV_RULES)
-  INSTALL (
+if(INSTALL_TRAKSTAR_UDEV_RULES)
+  install(
     FILES config/99-trakstar.rules
     DESTINATION "/etc/udev/rules.d"
     COMPONENT "udev"
-    )
-else (INSTALL_TRAKSTAR_UDEV_RULES)
-  message (STATUS "Udev rules for trakstar not being installed, install them with -DINSTALL_TRAKSTAR_UDEV_RULES=ON")
-endif (INSTALL_TRAKSTAR_UDEV_RULES)
+  )
+else()
+  message(STATUS "Udev rules for trakstar not being installed, install them with -DINSTALL_TRAKSTAR_UDEV_RULES=ON")
+endif()
 
-catkin_package()
+ament_export_dependencies(rosidl_default_runtime)
+ament_export_include_directories(include)
+ament_export_libraries(trakstar)
 
+ament_package()

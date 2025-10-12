@@ -1,20 +1,27 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
-import rospy
-import tf2_ros
+import rclpy
+from rclpy.node import Node
+from rclpy.time import Time
+from tf2_ros import TransformException
+from tf2_ros.buffer import Buffer
+from tf2_ros.transform_listener import TransformListener
 import transforms3d as td
 import numpy as np
 import pickle
-import std_msgs.msg
+from std_msgs.msg import String
+from rclpy.duration import Duration
 
-class CalibratedDataPublisher(object):
+class CalibratedDataPublisher(Node):
     def __init__(self):
+        super().__init__('calibrated_data_publisher')
+        
         # Subscribing to TF
-        self.tfBuffer = tf2_ros.Buffer()
-        listener = tf2_ros.TransformListener(self.tfBuffer)
-        self.calibrated_joint_angle = rospy.Publisher('calibrated_joint_angle', std_msgs.msg.String, queue_size = 1)
-        self.timer = rospy.Timer(rospy.Duration(0.01), self.timer_callback)
-    
+        self.tf_buffer = Buffer()
+        self.tf_listener = TransformListener(self.tf_buffer, self)
+        
+        self.calibrated_joint_angle = self.create_publisher(String, 'calibrated_joint_angle', 1)
+        self.timer = self.create_timer(0.01, self.timer_callback)
     
     def load_file(self, filename):
         '''
@@ -36,11 +43,11 @@ class CalibratedDataPublisher(object):
             self.pip_neutral_pose = self.get_transform("sensor_2")
 
         except IOError:
-            print("Failed to read file")
+            self.get_logger().error("Failed to read file")
             return False
         return True
 
-    def timer_callback(self, timer):
+    def timer_callback(self):
         '''
         Gets transforms from Trakstar and publishes the joint angle to `/calibrated_joint_angle.`
         '''
@@ -55,7 +62,7 @@ class CalibratedDataPublisher(object):
         pip_angle = self.calculate_relative_angle(self.pip_neutral_pose, s2_raw_transform, self.pip_axis) - mcp_angle
 
         # Publish the angle to ROS
-        msg = std_msgs.msg.String()
+        msg = String()
         msg.data = "MCP : %s, DIP: %s"%(str(mcp_angle)[:7], str(pip_angle)[:7])
         self.calibrated_joint_angle.publish(msg)
     
@@ -78,10 +85,10 @@ class CalibratedDataPublisher(object):
         # catching singularities
         threshold = 1e-6
         if td.quaternions.qnorm(twist) < threshold:
-            print("Singularity in twist")
+            self.get_logger().warning("Singularity in twist")
             return
         elif td.quaternions.qnorm(transform_quat) < threshold:
-            print("Singularity in rotation")
+            self.get_logger().warning("Singularity in rotation")
             return
         
         if dot_product < 0:
@@ -93,9 +100,9 @@ class CalibratedDataPublisher(object):
         twist_axis, twist_theta = td.quaternions.quat2axangle(twist)
     
         if not np.allclose(axis, twist_axis):
-            print("Axis of rotation is not the given axis. Something went wrong.")
-            print("twist axis: %s"%(twist_axis))
-            print("pca axis  : %s"%(axis))
+            self.get_logger().warning("Axis of rotation is not the given axis. Something went wrong.")
+            self.get_logger().warning("twist axis: %s"%(twist_axis))
+            self.get_logger().warning("pca axis  : %s"%(axis))
         
         return twist_theta*(180/np.pi)
         
@@ -114,7 +121,7 @@ class CalibratedDataPublisher(object):
         '''
         pickle.dump(self.joint_angle_info, outfile)
         outfile.close()
-        print("Saved joint angle information.")
+        self.get_logger().info("Saved joint angle information.")
 
     def to_affine(self, t):
         '''
@@ -133,25 +140,34 @@ class CalibratedDataPublisher(object):
         '''
         try:
             # Calculating the transform from Sensor 0 to Sensor 1
-            b_sensor0 = self.to_affine(self.tfBuffer.lookup_transform('trakstar_base', 'trakstar0', rospy.Time(0), rospy.Duration(1.0)))
-            b_sensor1 = self.to_affine(self.tfBuffer.lookup_transform('trakstar_base', 'trakstar1', rospy.Time(0), rospy.Duration(1.0)))
-            b_sensor2 = self.to_affine(self.tfBuffer.lookup_transform('trakstar_base', 'trakstar2', rospy.Time(0), rospy.Duration(1.0)))
+            b_sensor0 = self.to_affine(self.tf_buffer.lookup_transform('trakstar_base', 'trakstar0', Time(), Duration(seconds=1.0)))
+            b_sensor1 = self.to_affine(self.tf_buffer.lookup_transform('trakstar_base', 'trakstar1', Time(), Duration(seconds=1.0)))
+            b_sensor2 = self.to_affine(self.tf_buffer.lookup_transform('trakstar_base', 'trakstar2', Time(), Duration(seconds=1.0)))
             s0_to_s1 = np.dot(np.linalg.inv(b_sensor0), b_sensor1)
             s0_to_s2 = np.dot(np.linalg.inv(b_sensor0), b_sensor2)
             if sensor == "sensor_1":
                 return s0_to_s1
             elif sensor == "sensor_2": 
                 return s0_to_s2
-        except (tf2_ros.LookupException, tf2_ros.ConnectivityException, tf2_ros.ExtrapolationException):
-            rospy.logerr("Calibration data collection: failed to get transforms")
+        except TransformException as ex:
+            self.get_logger().error("Calibration data collection: failed to get transforms: %s" % ex)
             return None
 
-if __name__ == '__main__':
-    rospy.init_node('calibrated_data_publisher', anonymous=True)
-    outfile = open('sensor_information', 'wb')
+def main(args=None):
+    rclpy.init(args=args)
+    
     cdp = CalibratedDataPublisher()
     if not cdp.load_file('calibration_info'):
-        exit()
-    rospy.spin()
-    if rospy.is_shutdown():
-        cdp.save_sensor_information(outfile)
+        rclpy.shutdown()
+        return
+    
+    try:
+        rclpy.spin(cdp)
+    except KeyboardInterrupt:
+        pass
+    finally:
+        cdp.destroy_node()
+        rclpy.shutdown()
+
+if __name__ == '__main__':
+    main()

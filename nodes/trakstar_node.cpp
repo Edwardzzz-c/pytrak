@@ -30,190 +30,237 @@
 /** 
  * Author: Sean Seungkook Yun <seungkook.yun@sri.com>
  * Adapted for MyHand by: Ava Chen <ava.chen@columbia.edu> 
+ * Adapted for ROS2 by: Cheng Zhang
 */
 
 #include <string>
-#include <ros/ros.h>
+#include <memory>
+#include <chrono>
+#include <rclcpp/rclcpp.hpp>
 #include "trakstar/PointATC3DG.hpp"
-#include "trakstar/TrakstarMsg.h"
-#include "tf/tf.h"
+#include "trakstar/msg/trakstar_msg.hpp"
+#include "geometry_msgs/msg/transform_stamped.hpp"
+#include "tf2/LinearMath/Quaternion.h"
+#include "tf2/LinearMath/Vector3.h"
+#include "tf2/LinearMath/Matrix3x3.h"
+#include "tf2/LinearMath/Transform.h"
+#include "tf2_geometry_msgs/tf2_geometry_msgs.hpp"
 
 // Visualization
-#include <tf/transform_broadcaster.h>
+#include <tf2_ros/transform_broadcaster.h>
 
 using namespace trakstar;
 using std::string;
+using namespace std::chrono_literals;
 
-int main(int argc, char **argv)
+class TrakstarNode : public rclcpp::Node
 {
-  ros::init(argc, argv, "trakstar_driver");
-  ros::NodeHandle n, n_private("~");
-  ros::Time::init();
-
-  bool hemisphere_back;
-  n_private.param<bool>("hemisphere_back", hemisphere_back, false);
-
-  //initialize hardware
-  ROS_INFO("Initializing TRAKSTAR. Please wait....");
-  PointATC3DG bird_;
-  if( !bird_ ) {
-    ROS_ERROR("can't open trakstar"); 
-    return -1;
-  }
-
-  int frequency = 255;
-  n_private.getParam("frequency", frequency);
-  ROS_INFO("Frequency: %d", frequency);
-
-  bird_.setMeasurementRate(static_cast<float>(frequency));
-
-  ROS_INFO("Initialization Complete.");
-
-  bird_.setSuddenOutputChangeLock( 0 );	
-  int num_sen=bird_.getNumberOfSensors();
-  ROS_INFO("Number of trakers: %d", num_sen);
-
-  if (num_sen<2) {
-    ROS_ERROR("at least 2 trackers required"); 
-    return -1;
-  }
-
-  ROS_INFO("Output is set: position/quaternion");
-  for (int i=0; i<num_sen; i++) {
-    bird_.setSensorQuaternion(i);
-    if (hemisphere_back)
-      bird_.setSensorHemisphere(i, HEMISPHERE_REAR);
-    else 
-      bird_.setSensorHemisphere(i, HEMISPHERE_FRONT);
-  }
-
-  bool range_72inch;
-  n_private.param<bool>("range_72inch", range_72inch, false);
-  if (range_72inch)
-    bird_.setMaximumRange(true);
-
-  double dX, dY, dZ;
-  double* quat=new double[4];
-
-
-  bool publish_tf;
-  n_private.param<bool>("publish_tf", publish_tf, false);
-  if(publish_tf)
-    ROS_INFO("Publishing frame data to TF.");
-
-  //offset of how the sensor tip is attached
-  double px, py, pz;
-  n_private.param<double>("pivot_x", px, 0);
-  n_private.param<double>("pivot_y", py, 0);
-  n_private.param<double>("pivot_z", pz, 0);
-  tf::Vector3 trakstar_attach_pos(px, py, pz);
-
-  //orientation of how the sensor tip is attached
-  double rx, ry, rz;
-  n_private.param<double>("attach_roll", rx, 0);
-  n_private.param<double>("attach_pitch", ry, 0);
-  n_private.param<double>("attach_yaw", rz, 0);
-  tf::Matrix3x3 trakstar_attach;
-  trakstar_attach.setEulerYPR(rz, ry, rx);
-
-  //offset of how the sensor tip is attached
-  double px1, py1, pz1;
-  n_private.param<double>("pivot_x1", px1, 0);
-  n_private.param<double>("pivot_y1", py1, 0);
-  n_private.param<double>("pivot_z1", pz1, 0);
-  tf::Vector3 trakstar_attach_pos1(px1, py1, pz1);
-
-  //orientation of how the sensor tip is attached
-  double rx1, ry1, rz1;
-  n_private.param<double>("attach_roll1", rx1, 0);
-  n_private.param<double>("attach_pitch1", ry1, 0);
-  n_private.param<double>("attach_yaw1", rz1, 0);
-  tf::Matrix3x3 trakstar_attach1;
-  trakstar_attach1.setEulerYPR(rz1, ry1, rx1);
-
-
-  // Initialize ROS stuff
-  ros::Publisher trakstar_pub = n.advertise<trakstar::TrakstarMsg>("trakstar_msg", 1);
-  ros::Publisher trakstar_raw_pub = n.advertise<trakstar::TrakstarMsg>("trakstar_raw_msg", 1);
-  tf::TransformBroadcaster *broadcaster = 0;
-  if(publish_tf) 
-    broadcaster = new tf::TransformBroadcaster();
-
-  // mangle the reported pose into the ROS frame conventions
-  const tf::Matrix3x3 ros_to_trakstar( -1,  0,  0,
-	                   	      0,  1,  0,
-	                   	      0,  0, -1 );
-  ros::Rate loop_rate(frequency);
-
-  while (n.ok())
+public:
+  TrakstarNode() : Node("trakstar_driver")
   {
-    //publish data
-    trakstar::TrakstarMsg msg;
-    msg.header.stamp = ros::Time::now();
-    msg.n_tracker = num_sen;
+    // Declare parameters
+    this->declare_parameter<bool>("hemisphere_back", false);
+    this->declare_parameter<int>("frequency", 255);
+    this->declare_parameter<bool>("range_72inch", false);
+    this->declare_parameter<bool>("publish_tf", false);
+    
+    // Sensor 0 attachment parameters
+    this->declare_parameter<double>("pivot_x", 0.0);
+    this->declare_parameter<double>("pivot_y", 0.0);
+    this->declare_parameter<double>("pivot_z", 0.0);
+    this->declare_parameter<double>("attach_roll", 0.0);
+    this->declare_parameter<double>("attach_pitch", 0.0);
+    this->declare_parameter<double>("attach_yaw", 0.0);
+    
+    // Sensor 1 attachment parameters
+    this->declare_parameter<double>("pivot_x1", 0.0);
+    this->declare_parameter<double>("pivot_y1", 0.0);
+    this->declare_parameter<double>("pivot_z1", 0.0);
+    this->declare_parameter<double>("attach_roll1", 0.0);
+    this->declare_parameter<double>("attach_pitch1", 0.0);
+    this->declare_parameter<double>("attach_yaw1", 0.0);
 
-    //publish raw data
-    trakstar::TrakstarMsg msg_raw;
-    msg_raw.header.stamp = ros::Time::now();
-    msg_raw.n_tracker = num_sen;
+    // Get parameters
+    hemisphere_back_ = this->get_parameter("hemisphere_back").as_bool();
+    frequency_ = this->get_parameter("frequency").as_int();
+    range_72inch_ = this->get_parameter("range_72inch").as_bool();
+    publish_tf_ = this->get_parameter("publish_tf").as_bool();
 
-    std::vector<geometry_msgs::TransformStamped> transforms(num_sen);
+    double px = this->get_parameter("pivot_x").as_double();
+    double py = this->get_parameter("pivot_y").as_double();
+    double pz = this->get_parameter("pivot_z").as_double();
+    double rx = this->get_parameter("attach_roll").as_double();
+    double ry = this->get_parameter("attach_pitch").as_double();
+    double rz = this->get_parameter("attach_yaw").as_double();
+    
+    double px1 = this->get_parameter("pivot_x1").as_double();
+    double py1 = this->get_parameter("pivot_y1").as_double();
+    double pz1 = this->get_parameter("pivot_z1").as_double();
+    double rx1 = this->get_parameter("attach_roll1").as_double();
+    double ry1 = this->get_parameter("attach_pitch1").as_double();
+    double rz1 = this->get_parameter("attach_yaw1").as_double();
 
-    for( int i = 0; i <num_sen  ; ++i ) 
-    {
-	bird_.getCoordinatesQuaternion(i, dX, dY, dZ, quat);
-	tf::Vector3 pos(dX, dY, dZ);
-	tf::Quaternion q(-quat[1], -quat[2], -quat[3], quat[0]);
-	tf::Matrix3x3 mat(q);
-
-	tf::transformTFToMsg(tf::Transform(mat,pos), transforms[i].transform);
-	msg_raw.transform[i]=transforms[i].transform;
-
-	mat=ros_to_trakstar*mat;
-
-	if (i<1) {
-	  mat*=trakstar_attach;
-	  pos=ros_to_trakstar*pos+ mat*trakstar_attach_pos; 
-        }
-        else {
-	  mat*=trakstar_attach1;
-	  pos=ros_to_trakstar*pos+ mat*trakstar_attach_pos1; 
-        }
-
-
-	tf::transformTFToMsg(tf::Transform(mat,pos), transforms[i].transform);
-
-	msg.transform[i]=transforms[i].transform;
+    // Initialize hardware
+    RCLCPP_INFO(this->get_logger(), "Initializing TRAKSTAR. Please wait....");
+    bird_ = std::make_unique<PointATC3DG>();
+    
+    if(!*bird_) {
+      RCLCPP_ERROR(this->get_logger(), "can't open trakstar");
+      throw std::runtime_error("Failed to open trakstar");
     }
-    trakstar_pub.publish(msg);
-    trakstar_raw_pub.publish(msg_raw);
 
+    RCLCPP_INFO(this->get_logger(), "Frequency: %d", frequency_);
+    bird_->setMeasurementRate(static_cast<float>(frequency_));
 
-    if(broadcaster)
+    RCLCPP_INFO(this->get_logger(), "Initialization Complete.");
+
+    bird_->setSuddenOutputChangeLock(0);
+    num_sen_ = bird_->getNumberOfSensors();
+    RCLCPP_INFO(this->get_logger(), "Number of trackers: %d", num_sen_);
+
+    if(num_sen_ < 2) {
+      RCLCPP_ERROR(this->get_logger(), "at least 2 trackers required");
+      throw std::runtime_error("At least 2 trackers required");
+    }
+
+    RCLCPP_INFO(this->get_logger(), "Output is set: position/quaternion");
+    for(int i = 0; i < num_sen_; i++) {
+      bird_->setSensorQuaternion(i);
+      if(hemisphere_back_)
+        bird_->setSensorHemisphere(i, HEMISPHERE_REAR);
+      else
+        bird_->setSensorHemisphere(i, HEMISPHERE_FRONT);
+    }
+
+    if(range_72inch_)
+      bird_->setMaximumRange(true);
+
+    // Setup attachment transforms
+    trakstar_attach_pos_ = tf2::Vector3(px, py, pz);
+    trakstar_attach_.setEulerYPR(rz, ry, rx);
+    
+    trakstar_attach_pos1_ = tf2::Vector3(px1, py1, pz1);
+    trakstar_attach1_.setEulerYPR(rz1, ry1, rx1);
+
+    // Initialize ROS stuff
+    trakstar_pub_ = this->create_publisher<trakstar::msg::TrakstarMsg>("trakstar_msg", 1);
+    trakstar_raw_pub_ = this->create_publisher<trakstar::msg::TrakstarMsg>("trakstar_raw_msg", 1);
+    
+    if(publish_tf_) {
+      RCLCPP_INFO(this->get_logger(), "Publishing frame data to TF.");
+      tf_broadcaster_ = std::make_unique<tf2_ros::TransformBroadcaster>(*this);
+    }
+
+    // Mangle the reported pose into the ROS frame conventions
+    ros_to_trakstar_ = tf2::Matrix3x3(-1,  0,  0,
+                                       0,  1,  0,
+                                       0,  0, -1);
+
+    quat_ = new double[4];
+
+    // Create timer for main loop
+    auto timer_period = std::chrono::microseconds(static_cast<int>(1000000.0 / frequency_));
+    timer_ = this->create_wall_timer(timer_period, std::bind(&TrakstarNode::timer_callback, this));
+  }
+
+  ~TrakstarNode()
+  {
+    delete[] quat_;
+  }
+
+private:
+  void timer_callback()
+  {
+    // Publish data
+    auto msg = trakstar::msg::TrakstarMsg();
+    msg.header.stamp = this->now();
+    msg.n_tracker = num_sen_;
+
+    // Publish raw data
+    auto msg_raw = trakstar::msg::TrakstarMsg();
+    msg_raw.header.stamp = this->now();
+    msg_raw.n_tracker = num_sen_;
+
+    std::vector<geometry_msgs::msg::TransformStamped> transforms(num_sen_);
+
+    for(int i = 0; i < num_sen_; ++i) 
+    {
+      double dX, dY, dZ;
+      bird_->getCoordinatesQuaternion(i, dX, dY, dZ, quat_);
+      
+      tf2::Vector3 pos(dX, dY, dZ);
+      tf2::Quaternion q(-quat_[1], -quat_[2], -quat_[3], quat_[0]);
+      tf2::Matrix3x3 mat(q);
+
+      tf2::Transform transform(mat, pos);
+      msg_raw.transform[i] = tf2::toMsg(transform);
+
+      mat = ros_to_trakstar_ * mat;
+
+      if(i < 1) {
+        mat *= trakstar_attach_;
+        pos = ros_to_trakstar_ * pos + mat * trakstar_attach_pos_;
+      }
+      else {
+        mat *= trakstar_attach1_;
+        pos = ros_to_trakstar_ * pos + mat * trakstar_attach_pos1_;
+      }
+
+      tf2::Transform final_transform(mat, pos);
+      msg.transform[i] = tf2::toMsg(final_transform);
+    }
+    
+    trakstar_pub_->publish(msg);
+    trakstar_raw_pub_->publish(msg_raw);
+
+    if(tf_broadcaster_)
     {
       std::string frames[4] = {"trakstar0", "trakstar1", "trakstar2", "trakstar3"};
-      for(int kk = 0; kk < num_sen; kk++)
+      for(int kk = 0; kk < num_sen_; kk++)
       {
         transforms[kk].header.stamp = msg.header.stamp;
         transforms[kk].header.frame_id = "trakstar_base";
         transforms[kk].child_frame_id = frames[kk];
+        transforms[kk].transform = msg.transform[kk];
       }
 
-      broadcaster->sendTransform(transforms);
+      tf_broadcaster_->sendTransform(transforms);
     }
-
-    loop_rate.sleep();
-    ros::spinOnce();
   }
 
-  delete [] quat;
+  std::unique_ptr<PointATC3DG> bird_;
+  int num_sen_;
+  bool hemisphere_back_;
+  int frequency_;
+  bool range_72inch_;
+  bool publish_tf_;
+  double* quat_;
+  
+  tf2::Vector3 trakstar_attach_pos_;
+  tf2::Matrix3x3 trakstar_attach_;
+  tf2::Vector3 trakstar_attach_pos1_;
+  tf2::Matrix3x3 trakstar_attach1_;
+  tf2::Matrix3x3 ros_to_trakstar_;
+  
+  rclcpp::Publisher<trakstar::msg::TrakstarMsg>::SharedPtr trakstar_pub_;
+  rclcpp::Publisher<trakstar::msg::TrakstarMsg>::SharedPtr trakstar_raw_pub_;
+  std::unique_ptr<tf2_ros::TransformBroadcaster> tf_broadcaster_;
+  rclcpp::TimerBase::SharedPtr timer_;
+};
+
+int main(int argc, char **argv)
+{
+  rclcpp::init(argc, argv);
+  
+  try {
+    auto node = std::make_shared<TrakstarNode>();
+    rclcpp::spin(node);
+  } catch (const std::exception& e) {
+    RCLCPP_ERROR(rclcpp::get_logger("trakstar_driver"), "Exception: %s", e.what());
+    rclcpp::shutdown();
+    return -1;
+  }
+  
+  rclcpp::shutdown();
+  return 0;
 }
-
-
-
-
-
-
-
-
-
