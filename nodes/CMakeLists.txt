@@ -10,7 +10,7 @@ ament_target_dependencies(trakstar_node
 )
 
 target_link_libraries(trakstar_node
-  trakstar
+  trakstar_driver
 )
 
 rosidl_get_typesupport_target(cpp_typesupport_target

@@ -5,7 +5,7 @@ ament_target_dependencies(trakstar_print
 )
 
 target_link_libraries(trakstar_print 
-  trakstar
+  trakstar_driver
 )
 
 install(TARGETS trakstar_print
