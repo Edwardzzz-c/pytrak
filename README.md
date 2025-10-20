@@ -41,10 +41,26 @@ python3 examples/trakstar_example.py
 ```python
 import pytrak
 
+# Initialize device
 trakstar = pytrak.Trakstar()
 if trakstar.is_ok():
+    print(f"Number of sensors: {trakstar.get_number_of_sensors()}")
+    
+    # Get data from single sensor
     data = trakstar.get_coordinates_quaternion(0)
-    print(f"Position: {data['x']}, {data['y']}, {data['z']}")
+    if data["success"]:
+        x, y, z = data["x"], data["y"], data["z"]
+        quat = data["quaternion"]  # [w, x, y, z]
+        print(f"Sensor 0: pos=({x:.3f}, {y:.3f}, {z:.3f}) quat=({quat[0]:.3f}, {quat[1]:.3f}, {quat[2]:.3f}, {quat[3]:.3f})")
+    
+    # Get data from all sensors at once
+    all_data = trakstar.get_all_sensors_data()
+    if all_data["success"]:
+        for sensor_data in all_data["sensors"]:
+            sensor_id = sensor_data["sensor_id"]
+            x, y, z = sensor_data["x"], sensor_data["y"], sensor_data["z"]
+            quat = sensor_data["quaternion"]
+            print(f"Sensor {sensor_id}: pos=({x:.3f}, {y:.3f}, {z:.3f}) quat=({quat[0]:.3f}, {quat[1]:.3f}, {quat[2]:.3f}, {quat[3]:.3f})")
 ```
 
 ## Examples
