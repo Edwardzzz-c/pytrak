@@ -1,15 +1,15 @@
-# Trakstar Python Wrapper
+# Pytrak (Python Trakstar Wrapper)
 
-A Python wrapper for the Trakstar PointATC3DG USB tracker without ROS2 dependencies.
+A Python wrapper for the Trakstar PointATC3DG USB tracker based on:
+- https://github.com/ChristophJud/ATC3DGTracker (Original)
+- https://github.com/seanyun/trakstar_ros (Version compatible with hardware owned by ROAM lab)
+- https://github.com/joaquin-ps/trakstar_ros2 (Same implementation as Pytrak in ROS2)
 
 ## Features
 
-- Direct access to Trakstar hardware without ROS2
+- Direct access to Trakstar hardware with Python API
 - Support for multiple sensors
 - Multiple data formats: quaternion, Euler angles, rotation matrix
-- Real-time data acquisition
-- Easy-to-use Python API
-- No ROS2 dependencies
 - Docker support for isolated builds
 
 ## Quick Start
@@ -86,12 +86,3 @@ if trakstar.is_ok():
 - **Device not found**: Check USB permissions and device connection
 - **Import error**: Make sure the module is in your Python path
 - **Permission denied**: Add your user to the dialout group
-
-## Coordinate System
-
-Right-handed coordinate system:
-- X-axis: Forward/backward
-- Y-axis: Left/right  
-- Z-axis: Up/down
-
-Position units are in meters.
