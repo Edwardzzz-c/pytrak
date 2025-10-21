@@ -21,6 +21,44 @@ if ! command -v mamba &> /dev/null; then
     exit 1
 fi
 
+# Check and setup USB permissions on Linux
+if [[ "$OSTYPE" == "linux-gnu"* ]]; then
+    echo "Checking USB permissions..."
+    
+    # Add user to dialout group
+    if ! groups | grep -q dialout; then
+        echo "Adding user to dialout group for USB device access..."
+        echo "This requires sudo privileges. You may be prompted for your password."
+        sudo usermod -a -G dialout $USER
+        echo "✓ User added to dialout group"
+        echo "⚠ Please log out and back in for the changes to take effect"
+        echo "   (or run 'newgrp dialout' in a new terminal session)"
+    else
+        echo "✓ User already in dialout group"
+    fi
+    
+    # Setup udev rules for Trakstar device
+    echo "Setting up udev rules for Trakstar device..."
+    if [ -f "99-trakstar.rules" ]; then
+        echo "Installing udev rules..."
+        echo "This requires sudo privileges. You may be prompted for your password."
+        if sudo cp 99-trakstar.rules /etc/udev/rules.d/ && \
+           sudo udevadm control --reload-rules && \
+           sudo udevadm trigger; then
+            echo "✓ udev rules installed and reloaded"
+        else
+            echo "⚠ Failed to install udev rules. You may need to run manually:"
+            echo "   sudo cp 99-trakstar.rules /etc/udev/rules.d/"
+            echo "   sudo udevadm control --reload-rules"
+            echo "   sudo udevadm trigger"
+        fi
+    else
+        echo "⚠ 99-trakstar.rules file not found, skipping udev setup"
+    fi
+else
+    echo "ℹ USB permissions check skipped (not on Linux)"
+fi
+
 # Create environment if it doesn't exist
 if ! mamba env list | grep -q pytrak; then
     echo "Creating mamba environment..."

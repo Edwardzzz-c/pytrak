@@ -18,7 +18,7 @@ A Python wrapper for the Trakstar PointATC3DG USB tracker based on:
 
 - [Mamba](https://mamba.readthedocs.io/en/latest/installation.html) or [Miniconda](https://docs.conda.io/en/latest/miniconda.html)
 - Trakstar PointATC3DG USB tracker
-- USB permissions (add user to dialout group on Linux)
+- USB permissions (automatically configured by build script on Linux - adds user to dialout group and installs udev rules)
 
 ## Quick Start
 

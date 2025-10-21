@@ -1,2 +1,5 @@
-# udev rules for Trakstar USB device
-SUBSYSTEM=="usb", ATTRS{idVendor}=="0403", ATTRS{idProduct}=="6001", MODE="0666", GROUP="plugdev", TAG+="uaccess"
+# udev rules for Trakstar PointATC3DG USB tracker
+# This file should be copied to /etc/udev/rules.d/ to allow non-root access to the device
+
+# Trakstar PointATC3DG (Cypress Semiconductor Corp. trakSTAR-FX2)
+SUBSYSTEM=="usb", ATTRS{idVendor}=="04b4", ATTRS{idProduct}=="1005", MODE="0666", GROUP="dialout"
