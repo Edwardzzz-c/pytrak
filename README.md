@@ -1,6 +1,7 @@
 # Pytrak (Python Trakstar Wrapper)
 
 A Python wrapper for the Trakstar PointATC3DG USB tracker based on:
+
 - https://github.com/ChristophJud/ATC3DGTracker (Original)
 - https://github.com/seanyun/trakstar_ros (Version compatible with ROAM lab hardware)
 - https://github.com/hand-orthosis/trakstar_ros (Working ROS1 implementation with extra hand-orthosis processing)
@@ -12,21 +13,24 @@ A Python wrapper for the Trakstar PointATC3DG USB tracker based on:
 - Support for multiple sensors
 - Multiple data formats: quaternion, Euler angles, rotation matrix
 - Mamba environment for isolated builds (no Docker required)
-- Cross-platform support (Linux, macOS, Windows)
+- Linux-only (tested and optimized for Linux systems)
 
 ## Requirements
 
+- Linux system
 - [Mamba](https://mamba.readthedocs.io/en/latest/installation.html) or [Miniconda](https://docs.conda.io/en/latest/miniconda.html)
 - Trakstar PointATC3DG USB tracker
-- USB permissions (automatically configured by build script on Linux - adds user to dialout group and installs udev rules)
+- USB permissions (automatically configured by build script - adds user to dialout group and installs udev rules)
 
 ## Quick Start
 
-### Option 1: Mamba (Recommended)
+### Option 1: Automated Build (Recommended)
+
 ```bash
-# Build using mamba environment
+# Build using automated script (handles USB permissions and compilation)
 ./build.sh
 
+# If you need to restart terminal for USB permissions, run the script again
 # Activate environment and run examples
 mamba activate pytrak
 export PYTHONPATH=$(pwd)
@@ -34,8 +38,15 @@ python examples/simple_example.py
 python examples/trakstar_example.py
 ```
 
-### Option 2: Manual Mamba Setup
+### Option 2: Manual Setup (Advanced)
+
 ```bash
+# Setup USB permissions manually (if not done by build script)
+sudo usermod -a -G dialout $USER
+sudo cp 99-trakstar.rules /etc/udev/rules.d/
+sudo udevadm control --reload-rules
+sudo udevadm trigger
+
 # Create environment
 mamba env create -f environment.yml
 
@@ -55,6 +66,7 @@ python examples/trakstar_example.py
 ```
 
 ### Usage
+
 ```python
 import pytrak
 
@@ -62,14 +74,14 @@ import pytrak
 trakstar = pytrak.Trakstar()
 if trakstar.is_ok():
     print(f"Number of sensors: {trakstar.get_number_of_sensors()}")
-    
+
     # Get data from single sensor
     data = trakstar.get_coordinates_quaternion(0)
     if data["success"]:
         x, y, z = data["x"], data["y"], data["z"]
         quat = data["quaternion"]  # [w, x, y, z]
         print(f"Sensor 0: pos=({x:.3f}, {y:.3f}, {z:.3f}) quat=({quat[0]:.3f}, {quat[1]:.3f}, {quat[2]:.3f}, {quat[3]:.3f})")
-    
+
     # Get data from all sensors at once
     all_data = trakstar.get_all_sensors_data()
     if all_data["success"]:
@@ -101,5 +113,6 @@ if trakstar.is_ok():
 ## Troubleshooting
 
 - **Device not found**: Check USB permissions and device connection
-- **Import error**: Make sure the module is in your Python path
-- **Permission denied**: Add your user to the dialout group
+- **Import error**: Make sure the module is in your Python path (`export PYTHONPATH=$(pwd)`)
+- **Permission denied**: Run the build script to set up USB permissions, then restart your terminal
+- **Build script exits early**: This is normal if USB permissions need to be set up - restart your terminal and run the script again
