@@ -11,31 +11,47 @@ A Python wrapper for the Trakstar PointATC3DG USB tracker based on:
 - Direct access to Trakstar hardware with Python API
 - Support for multiple sensors
 - Multiple data formats: quaternion, Euler angles, rotation matrix
-- Docker support for isolated builds
+- Mamba environment for isolated builds (no Docker required)
+- Cross-platform support (Linux, macOS, Windows)
+
+## Requirements
+
+- [Mamba](https://mamba.readthedocs.io/en/latest/installation.html) or [Miniconda](https://docs.conda.io/en/latest/miniconda.html)
+- Trakstar PointATC3DG USB tracker
+- USB permissions (add user to dialout group on Linux)
 
 ## Quick Start
 
-### Option 1: Docker (Recommended)
+### Option 1: Mamba (Recommended)
 ```bash
-# Build and start container
-./build_docker.sh
-
-# Access container
-docker exec -it pytrak_container /bin/bash
-
-# Run examples
-python3 examples/simple_example.py
-python3 examples/trakstar_example.py
-```
-
-### Option 2: Native Build
-```bash
-# Build (requires sudo for dependencies)
+# Build using mamba environment
 ./build.sh
 
+# Activate environment and run examples
+mamba activate pytrak
+export PYTHONPATH=$(pwd)
+python examples/simple_example.py
+python examples/trakstar_example.py
+```
+
+### Option 2: Manual Mamba Setup
+```bash
+# Create environment
+mamba env create -f environment.yml
+
+# Activate environment
+mamba activate pytrak
+
+# Build
+mkdir -p build && cd build
+cmake .. -DCMAKE_BUILD_TYPE=Release
+make -j$(nproc)
+cp pytrak.so ..
+
 # Run examples
-python3 examples/simple_example.py
-python3 examples/trakstar_example.py
+export PYTHONPATH=$(pwd)
+python examples/simple_example.py
+python examples/trakstar_example.py
 ```
 
 ### Usage

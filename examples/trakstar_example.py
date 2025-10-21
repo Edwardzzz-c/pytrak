@@ -9,11 +9,28 @@ USB tracker. It provides examples of:
 - Configuring sensor parameters
 - Continuous data acquisition
 
+Usage:
+    # Activate mamba environment first:
+    mamba activate pytrak
+    export PYTHONPATH=$(pwd)
+    python examples/trakstar_example.py
+    
+    # Or use mamba run:
+    mamba run -n pytrak bash -c "export PYTHONPATH=\$(pwd) && python examples/trakstar_example.py"
+
 Author: Cheng Zhang <cz2874@columbia.edu>
 """
 
 import sys
+import os
 import time
+
+# Add current directory to Python path if not already there
+current_dir = os.path.dirname(os.path.abspath(__file__))
+parent_dir = os.path.dirname(current_dir)
+if parent_dir not in sys.path:
+    sys.path.insert(0, parent_dir)
+
 import numpy as np
 import pytrak
 

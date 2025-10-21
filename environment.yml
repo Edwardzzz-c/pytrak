@@ -1,0 +1,13 @@
+name: pytrak
+channels:
+  - conda-forge
+dependencies:
+  - python=3.10
+  - cmake
+  - gcc_linux-64
+  - gxx_linux-64
+  - libusb
+  - libusb-compat
+  - pybind11
+  - numpy
+  - pkg-config
