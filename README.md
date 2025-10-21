@@ -1,4 +1,4 @@
-# Pytrak (Python Trakstar Wrapper)
+# Pytrak (Python Trakstar Wrapper 2025)
 
 A Python wrapper for the Trakstar PointATC3DG USB tracker based on:
 
@@ -12,15 +12,13 @@ A Python wrapper for the Trakstar PointATC3DG USB tracker based on:
 - Direct access to Trakstar hardware with Python API
 - Support for multiple sensors
 - Multiple data formats: quaternion, Euler angles, rotation matrix
-- Mamba environment for isolated builds (no Docker required)
-- Linux-only (tested and optimized for Linux systems)
+- Mamba environment for isolated builds
+- Tested for linux only
 
 ## Requirements
 
 - Linux system
-- [Mamba](https://mamba.readthedocs.io/en/latest/installation.html) or [Miniconda](https://docs.conda.io/en/latest/miniconda.html)
-- Trakstar PointATC3DG USB tracker
-- USB permissions (automatically configured by build script - adds user to dialout group and installs udev rules)
+- [Mamba](https://mamba.readthedocs.io/en/latest/installation/mamba-installation.html)
 
 ## Quick Start
 
@@ -37,10 +35,10 @@ python examples/simple_example.py
 python examples/trakstar_example.py
 ```
 
-### Option 2: Manual Setup (Advanced)
+### Option 2: Manual Setup
 
 ```bash
-# Setup USB permissions manually (if not done by build script)
+# Setup USB permissions manually
 sudo usermod -a -G dialout $USER
 sudo cp 99-trakstar.rules /etc/udev/rules.d/
 sudo udevadm control --reload-rules
@@ -117,4 +115,4 @@ if trakstar.is_ok():
 - **Device not found**: Check USB permissions and device connection
 - **Import error**: Make sure the module is in your Python path (`export PYTHONPATH=$(pwd)`)
 - **Permission denied**: Run the build script to set up USB permissions, then restart your terminal
-- **Build script restarts**: This is normal if USB permissions need to be set up - the script automatically restarts with proper permissions
+- Contact Edward/Joaquin/Runsheng
