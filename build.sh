@@ -30,11 +30,10 @@ if ! groups | grep -q dialout; then
     echo "This requires sudo privileges. You may be prompted for your password."
     sudo usermod -a -G dialout $USER
     echo "✓ User added to dialout group"
-    echo "⚠ Please log out and back in for the changes to take effect"
-    echo "   (or run 'newgrp dialout' in a new terminal session)"
+    echo "Starting new shell with updated group membership..."
     echo ""
-    echo "Please restart your terminal and run this script again to continue the build."
-    exit 0
+    # Use newgrp to start a new shell with the dialout group
+    exec newgrp dialout
 else
     echo "✓ User already in dialout group"
 fi

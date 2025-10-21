@@ -30,7 +30,6 @@ A Python wrapper for the Trakstar PointATC3DG USB tracker based on:
 # Build using automated script (handles USB permissions and compilation)
 ./build.sh
 
-# If you need to restart terminal for USB permissions, run the script again
 # Activate environment and run examples
 mamba activate pytrak
 export PYTHONPATH=$(pwd)
@@ -46,6 +45,9 @@ sudo usermod -a -G dialout $USER
 sudo cp 99-trakstar.rules /etc/udev/rules.d/
 sudo udevadm control --reload-rules
 sudo udevadm trigger
+
+# IMPORTANT: Restart your terminal or run 'newgrp dialout' for group changes to take effect
+# Then continue with the build:
 
 # Create environment
 mamba env create -f environment.yml
@@ -115,4 +117,4 @@ if trakstar.is_ok():
 - **Device not found**: Check USB permissions and device connection
 - **Import error**: Make sure the module is in your Python path (`export PYTHONPATH=$(pwd)`)
 - **Permission denied**: Run the build script to set up USB permissions, then restart your terminal
-- **Build script exits early**: This is normal if USB permissions need to be set up - restart your terminal and run the script again
+- **Build script restarts**: This is normal if USB permissions need to be set up - the script automatically restarts with proper permissions
