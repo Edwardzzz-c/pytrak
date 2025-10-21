@@ -115,4 +115,4 @@ if trakstar.is_ok():
 - **Device not found**: Check USB permissions and device connection
 - **Import error**: Make sure the module is in your Python path (`export PYTHONPATH=$(pwd)`)
 - **Permission denied**: Run the build script to set up USB permissions, then restart your terminal
-- Contact Edward/Joaquin/Runsheng
+- **Contact**: Edward/Joaquin/Runsheng
