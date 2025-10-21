@@ -4,8 +4,8 @@ A Python wrapper for the Trakstar PointATC3DG USB tracker based on:
 
 - https://github.com/ChristophJud/ATC3DGTracker (Original)
 - https://github.com/seanyun/trakstar_ros (Version compatible with ROAM lab hardware)
-- https://github.com/hand-orthosis/trakstar_ros (Working ROS1 implementation with extra hand-orthosis processing)
-- https://github.com/joaquin-ps/trakstar_ros2 (Working ROS2 implementation)
+- https://github.com/hand-orthosis/trakstar_ros (Working ROS1 implementation with extra plotting and hand-orthosis processing)
+- https://github.com/joaquin-ps/trakstar_ros2 (Working ROS2 implementation with TF broadcasting for real-time visualization in RViz)
 
 ## Features
 
