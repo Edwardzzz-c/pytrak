@@ -11,7 +11,7 @@ A Python wrapper for the Trakstar PointATC3DG USB tracker based on:
 
 - Direct access to Trakstar hardware with Python API
 - Support for multiple sensors
-- Multiple data formats: quaternion, Euler angles, rotation matrix
+- Currently only support quaternion read
 - Mamba environment for isolated builds
 - Tested for linux only
 
@@ -74,22 +74,26 @@ import pytrak
 trakstar = pytrak.Trakstar()
 if trakstar.is_ok():
     print(f"Number of sensors: {trakstar.get_number_of_sensors()}")
+num_sensors = trakstar.get_number_of_sensors()
+# Initialize sensors to read quaternion
+for i in range(num_sensors):
+        trakstar.set_sensor_quaternion(i)
 
-    # Get data from single sensor
-    data = trakstar.get_coordinates_quaternion(0)
-    if data["success"]:
-        x, y, z = data["x"], data["y"], data["z"]
-        quat = data["quaternion"]  # [w, x, y, z]
-        print(f"Sensor 0: pos=({x:.3f}, {y:.3f}, {z:.3f}) quat=({quat[0]:.3f}, {quat[1]:.3f}, {quat[2]:.3f}, {quat[3]:.3f})")
+# Get data from single sensor
+data = trakstar.get_coordinates_quaternion(0)
+if data["success"]:
+    x, y, z = data["x"], data["y"], data["z"]
+    quat = data["quaternion"]  # [w, x, y, z]
+    print(f"Sensor 0: pos=({x:.3f}, {y:.3f}, {z:.3f}) quat=({quat[0]:.3f}, {quat[1]:.3f}, {quat[2]:.3f}, {quat[3]:.3f})")
 
-    # Get data from all sensors at once
-    all_data = trakstar.get_all_sensors_data()
-    if all_data["success"]:
-        for sensor_data in all_data["sensors"]:
-            sensor_id = sensor_data["sensor_id"]
-            x, y, z = sensor_data["x"], sensor_data["y"], sensor_data["z"]
-            quat = sensor_data["quaternion"]
-            print(f"Sensor {sensor_id}: pos=({x:.3f}, {y:.3f}, {z:.3f}) quat=({quat[0]:.3f}, {quat[1]:.3f}, {quat[2]:.3f}, {quat[3]:.3f})")
+# Get data from all sensors at once
+all_data = trakstar.get_all_sensors_data()
+if all_data["success"]:
+    for sensor_data in all_data["sensors"]:
+        sensor_id = sensor_data["sensor_id"]
+        x, y, z = sensor_data["x"], sensor_data["y"], sensor_data["z"]
+        quat = sensor_data["quaternion"]
+        print(f"Sensor {sensor_id}: pos=({x:.3f}, {y:.3f}, {z:.3f}) quat=({quat[0]:.3f}, {quat[1]:.3f}, {quat[2]:.3f}, {quat[3]:.3f})")
 ```
 
 ## Examples
@@ -104,8 +108,6 @@ if trakstar.is_ok():
 - `is_ok()` - Check if device is initialized
 - `get_number_of_sensors()` - Get number of connected sensors
 - `get_coordinates_quaternion(sensor_id)` - Get position and quaternion
-- `get_coordinates_angles(sensor_id)` - Get position and Euler angles
-- `get_coordinates_matrix(sensor_id)` - Get position and rotation matrix
 - `get_all_sensors_data()` - Get data from all sensors at once
 - `set_measurement_rate(rate)` - Set measurement frequency
 - `set_maximum_range(range_72inch)` - Set measurement range
