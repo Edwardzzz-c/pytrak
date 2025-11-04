@@ -73,8 +73,9 @@ import pytrak
 # Initialize device
 trakstar = pytrak.Trakstar()
 if trakstar.is_ok():
-    print(f"Number of sensors: {trakstar.get_number_of_sensors()}")
-num_sensors = trakstar.get_number_of_sensors()
+    num_sensors = trakstar.get_number_of_sensors()
+    print(f"Number of sensors: {num_sensors}")
+
 # Initialize sensors to read quaternion
 for i in range(num_sensors):
         trakstar.set_sensor_quaternion(i)
